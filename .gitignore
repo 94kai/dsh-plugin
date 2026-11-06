@@ -1,0 +1,7 @@
+# Personal bookmarks may contain URLs, private notes and credentials.
+/shortcuts/bookmarks.json
+
+# Local dependencies and generated files.
+node_modules/
+.DS_Store
+*.log

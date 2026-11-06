@@ -1,0 +1,4 @@
+- insert:
+    - id: shortcut-links
+      name: '@local/shortcuts'
+      config: {}

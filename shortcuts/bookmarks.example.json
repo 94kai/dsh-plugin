@@ -1,0 +1,11 @@
+[
+  {
+    "id": "example",
+    "title": "示例网站",
+    "url": "https://example.com/",
+    "description": "一个示例快捷入口",
+    "notes": "",
+    "color": "#3478c9",
+    "iconDataUrl": ""
+  }
+]
