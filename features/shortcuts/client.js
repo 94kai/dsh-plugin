@@ -5,8 +5,8 @@ window.__ModuleLoader__.load({
     const h = React.createElement;
     const NS = 'shortcut-links';
     const dictionaries = {
-      en: { heading: 'Quick links', details: 'Details and notes', newTab: 'Opens in a new tab', back: 'Back to chat', description: 'Your saved websites, descriptions and notes.', loading: 'Loading…', error: 'Could not load links. Please try again.', retry: 'Retry', open: 'Open website ↗', copyUrl: 'Copy URL', copyNotes: 'Copy notes', copied: 'Copied', copyError: 'Copy failed. Please select the text and copy manually.', notes: 'Notes', noNotes: 'No notes', count: ' saved links' },
-      zh: { heading: '快捷访问', details: '详情与备注', newTab: '在新标签页打开', back: '返回对话', description: '常用网站快捷入口，附带说明、备注和图标。', loading: '正在加载…', error: '入口加载失败，请重试。', retry: '重试', open: '打开网站 ↗', copyUrl: '复制网址', copyNotes: '复制备注', copied: '已复制', copyError: '复制失败，请选中文字手动复制。', notes: '备注', noNotes: '暂无备注', count: ' 个快捷入口' },
+      en: { toolkit: 'Pocket Kit', heading: 'Quick links', details: 'Details and notes', newTab: 'Opens in a new tab', back: 'Back to chat', description: 'Your saved websites, descriptions and notes.', loading: 'Loading…', error: 'Could not load links. Please try again.', retry: 'Retry', open: 'Open website ↗', copyUrl: 'Copy URL', copyNotes: 'Copy notes', copied: 'Copied', copyError: 'Copy failed. Please select the text and copy manually.', notes: 'Notes', noNotes: 'No notes', count: ' saved links' },
+      zh: { toolkit: '随身工具箱', heading: '快捷访问', details: '详情与备注', newTab: '在新标签页打开', back: '返回对话', description: '常用网站快捷入口，附带说明、备注和图标。', loading: '正在加载…', error: '入口加载失败，请重试。', retry: '重试', open: '打开网站 ↗', copyUrl: '复制网址', copyNotes: '复制备注', copied: '已复制', copyError: '复制失败，请选中文字手动复制。', notes: '备注', noNotes: '暂无备注', count: ' 个快捷入口' },
     };
     const css = `
       .shortcuts-links-foot { flex: 0 0 auto; align-self: stretch; width: 100%; min-width: 0; box-sizing: border-box; color: var(--dsw-alias-label-primary); font: inherit; }
@@ -47,6 +47,15 @@ window.__ModuleLoader__.load({
       .shortcuts-links-notes { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: 8px 0; padding: 12px; border-radius: 8px; background: var(--dsw-alias-bg-layer-2); user-select: text; }
       .shortcuts-links-note-heading { margin-top: 16px; font-size: 12px; color: var(--dsw-alias-label-tertiary); }
       @media (max-width: 600px) { .shortcuts-links-page { padding: 18px; } }
+      .shortcuts-links-card-heading > div { min-width:0; overflow-wrap:anywhere; }
+      .shortcuts-links-menu-row > span { overflow-wrap:anywhere; min-width:0; }
+      @media (max-width: 640px), (pointer: coarse) {
+        .shortcuts-links-trigger, .shortcuts-links-foot[data-wide='false'] .shortcuts-links-trigger { min-height:44px; min-width:44px; }
+        .shortcuts-links-menu-row, .shortcuts-links-button { min-height:44px; }
+        .shortcuts-links-page { padding:16px 12px max(24px, env(safe-area-inset-bottom)); }
+        .shortcuts-links-card { padding:14px; }
+        .shortcuts-links-menu { max-height:calc(100dvh - 24px); }
+      }
     `;
     function useBookmarks() {
       const [state, setState] = React.useState({ items: [], loading: true, error: false });
@@ -71,7 +80,7 @@ window.__ModuleLoader__.load({
     function Icon({ item }) {
       return item.iconDataUrl ? h('img', { src: item.iconDataUrl, alt: '' }) : h('span', null, item.title.slice(0, 1));
     }
-    function Footer({ wide, t, open }) {
+    function Footer({ wide, t, open, renderSlot }) {
       const state = useBookmarks();
       const trigger = React.useRef(null);
       const menu = React.useRef(null);
@@ -125,13 +134,13 @@ window.__ModuleLoader__.load({
         h('path', { d: 'M14 17.5h7m-3.5-3.5v7' }));
       return h('div', { className: 'shortcuts-links-foot', 'data-wide': String(wide) }, h('style', null, css),
         h('button', {
-          ref: trigger, type: 'button', className: 'shortcuts-links-trigger', title: t('heading'),
-          'aria-label': t('heading'), 'aria-haspopup': 'menu', 'aria-expanded': expanded, 'aria-controls': id,
+          ref: trigger, type: 'button', className: 'shortcuts-links-trigger', title: t('toolkit'),
+          'aria-label': t('toolkit'), 'aria-haspopup': 'menu', 'aria-expanded': expanded, 'aria-controls': id,
           onClick: () => menu.current.matches(':popover-open') ? close() : show(),
           onKeyDown(event) {
             if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); show(event.key === 'ArrowUp'); }
           },
-        }, glyph, wide ? h('span', null, t('heading')) : null),
+        }, glyph, wide ? h('span', null, t('toolkit')) : null),
         h('div', {
           ref: menu, id, popover: 'auto', role: 'menu', className: 'shortcuts-links-menu', 'aria-label': t('heading'),
           'data-menu-material': '', onKeyDown: keyboard,
@@ -142,6 +151,7 @@ window.__ModuleLoader__.load({
             key: item.id, role: 'menuitem', tabIndex: -1, href: item.url, target: '_blank', rel: 'noopener noreferrer',
             className: 'shortcuts-links-menu-row', title: `${item.title} · ${t('newTab')}`, onClick: () => close(true),
           }, h(Icon, { item }), h('span', null, item.title), h('span', { className: 'shortcuts-links-menu-arrow', 'aria-hidden': true }, '↗'))),
+          renderSlot('local.shortcuts.menu.action', { closeMenu: () => close(true), itemClassName: 'shortcuts-links-menu-row' }),
           h('div', { className: 'shortcuts-links-menu-divider', role: 'separator' }),
           h('button', { type: 'button', role: 'menuitem', tabIndex: -1, className: 'shortcuts-links-menu-row', onClick: () => { close(); open(); } },
             h('span', { 'aria-hidden': true }, '☷'), t('details'))));
@@ -185,6 +195,8 @@ window.__ModuleLoader__.load({
           props => h(Page, { ...props, back: () => ctx.layout.selectPanel(null) })));
         ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
           name: 'sidebar.footer.action', id: 'shortcuts', order: 10, locale: NS,
+          // Local actions receive closeMenu() and the owner's menu row class.
+          children: { 'local.shortcuts.menu.action': { kind: 'list', scope: 'root' } },
         }, props => h(Footer, { ...props, open: () => ctx.layout.selectPanel('shortcuts') })));
       },
     };

@@ -1,7 +1,19 @@
 # Personal bookmarks may contain URLs, private notes and credentials.
 /shortcuts/bookmarks.json
 
-# Local dependencies and generated files.
+# Private runtime data and secrets (never pack these either).
+/.local/
+.env
+.env.*
+!.env.example
+*.local.json
+*.pem
+*.key
+
+# Local dependencies, generated artifacts and test evidence.
 node_modules/
+/dist/
+**/artifacts/
+*.tgz
 .DS_Store
 *.log

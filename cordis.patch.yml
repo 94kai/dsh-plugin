@@ -1,0 +1,13 @@
+- insert:
+    - id: pocket-kit
+      name: '@local/pocket-kit'
+      config: {}
+    - id: pocket-kit-shortcuts
+      name: '@local/pocket-kit/shortcuts'
+      config: {}
+    - id: pocket-kit-network-speed
+      name: '@local/pocket-kit/network-speed'
+      config: {}
+    - id: pocket-kit-outing-checklist
+      name: '@local/pocket-kit/outing-checklist'
+      config: {}

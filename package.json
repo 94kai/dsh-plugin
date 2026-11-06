@@ -1,0 +1,33 @@
+{
+  "name": "@local/pocket-kit",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "description": "随身工具箱：手机优先的个人快捷访问、连接测速与出门清单",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./dist/client.js",
+    "./shortcuts": "./features/shortcuts/index.js",
+    "./network-speed": "./features/network-speed/host.js",
+    "./outing-checklist": "./features/outing-checklist/index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./shortcuts/locale/*.json": "./features/shortcuts/locale/*.json",
+    "./shortcuts/icon": "./features/shortcuts/icon.svg",
+    "./network-speed/locale/*.json": "./features/network-speed/host-locale/*.json",
+    "./network-speed/icon": "./features/network-speed/icon.svg",
+    "./outing-checklist/locale/*.json": "./features/outing-checklist/locale/*.json",
+    "./outing-checklist/icon": "./features/outing-checklist/icon.svg"
+  },
+  "files": ["index.js", "dist/client.js", "features/shortcuts/index.js", "features/shortcuts/locale/*.json", "features/shortcuts/icon.svg", "features/network-speed/host.js", "features/network-speed/server.js", "features/network-speed/host-locale/*.json", "features/network-speed/icon.svg", "features/outing-checklist/index.js", "features/outing-checklist/store.js", "features/outing-checklist/locale/*.json", "features/outing-checklist/icon.svg", "locale/*.json", "icon.svg", "cordis.patch.yml", "README.md", "docs/"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/check.mjs",
+    "test": "node --test features/*/*.test.js tests/*.test.js",
+    "verify": "npm run build && npm run check && npm test"
+  },
+  "dsh": {
+    "bundle": { "patch": "./cordis.patch.yml" },
+    "client": { "platform": "web", "immediately": true, "inject": ["@deepseek-ai/dsh-client-ui-sidebar", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-locale"] }
+  }
+}
