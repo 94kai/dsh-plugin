@@ -11,7 +11,7 @@ async function check(directory) {
     }
   }
 }
-for (const directory of ['features/', 'scripts/', 'tests/', 'dist/']) await check(directory);
+for (const directory of ['features/', 'lib/', 'scripts/', 'tests/', 'dist/']) await check(directory);
 const pkg = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
 for (const path of Object.values(pkg.exports)) if (!path.includes('*')) await access(new URL(path, root));
 for (const [key, path] of Object.entries(pkg.exports)) {

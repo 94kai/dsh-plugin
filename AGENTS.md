@@ -6,7 +6,8 @@
 - [开发与新增功能](docs/development.md)：实现流程、文档更新、构建验证及迁移待办。
 - [安全与隐私](docs/security-privacy.md)：私人文件、凭据、打包、存储与日志；接触数据前必读。
 - [移动端规范](docs/mobile.md)：手机主用的布局、触控、键盘与验收要求；修改 UI 前必读。
-- 功能：[快捷访问](docs/features/shortcuts.md) · [连接测速](docs/features/network-speed.md) · [出门清单](docs/features/outing-checklist.md)。
+- 功能：[首页导航](docs/features/home.md) · [快捷访问](docs/features/shortcuts.md) · [连接测速](docs/features/network-speed.md) · [出门清单](docs/features/outing-checklist.md) · [音乐](docs/features/music.md) · [小爱音箱](docs/features/xiaoai.md)。
+- [音乐与小爱迁移记录](docs/music-xiaoai-migration.md)：数据保留、兼容路径、设备默认暂停及验证边界。涉及真实音箱前必读。
 - [功能文档模板](docs/features/_template.md)：新增功能时复制，记录 API、数据、重要决策、生命周期及验证限制。
 
 每次新增或修改功能，必须同步更新对应功能文档中的重要决策、数据/API、验证结果和限制；新增功能还要补本页索引。手机是主要使用场景，隐私文件不得进入 Git、发布包或客户端。

@@ -48,9 +48,9 @@ window.__ModuleLoader__.load({
         const setOpen = value => { open = value; for (const notify of listeners) notify(); };
         const subscribe = notify => { listeners.add(notify); return () => listeners.delete(notify); };
         function useLocale() { return React.useSyncExternalStore(fn => ctx.locale.subscribe(fn), () => ctx.locale.getSnapshot()); }
-        function ShortcutAction({closeMenu,itemClassName}) {
+        function HomeAction({renderCard}) {
           useLocale();
-          return h('button',{type:'button',role:'menuitem',tabIndex:-1,className:itemClassName,'aria-haspopup':'dialog',onClick:()=>{closeMenu();setOpen(true);}},h(Gauge),h('span',null,t('title')));
+          return renderCard({title:t('title'),description:t('subtitle'),icon:h(Gauge),onClick:()=>setOpen(true)});
         }
         function Panel() {
           useLocale();
@@ -101,7 +101,7 @@ window.__ModuleLoader__.load({
               h('details',{className:'ns-details'},h('summary',null,t('details')),h('p',null,t('explanation')),h('p',null,t('uploadExplanation')),h('p',null,t('upSubmitted')+': '+volume(state.upload.submitted)),h('p',null,t('target')+': '+window.location.origin),h('p',null,t('completionNote'))),
               h('p',{id:warningId,className:'ns-warning'},t('warning'))));
         }
-        ctx.slots.inject('local.shortcuts.menu.action',()=>ctx.slots.register({name:'local.shortcuts.menu.action',id:'network-speed',order:20,label:()=>t('title')},ShortcutAction));
+        ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:'network-speed',order:40,label:()=>t('title')},HomeAction));
         ctx.slots.inject('shell.overlay',()=>ctx.slots.register({name:'shell.overlay',id:'network-speed',order:20},Panel));
         ctx.effect(()=>()=>{open=false;listeners.clear();});
       }

@@ -12,6 +12,8 @@
 
 # Local dependencies, generated artifacts and test evidence.
 node_modules/
+__pycache__/
+*.pyc
 /dist/
 **/artifacts/
 *.tgz

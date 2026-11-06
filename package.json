@@ -1,9 +1,9 @@
 {
   "name": "@local/pocket-kit",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
-  "description": "随身工具箱：手机优先的个人快捷访问、连接测速与出门清单",
+  "description": "随身工具箱：手机优先的个人音乐、小爱音箱、快捷访问、测速与清单",
   "exports": {
     ".": "./index.js",
     "./client": "./dist/client.js",
@@ -17,9 +17,46 @@
     "./network-speed/locale/*.json": "./features/network-speed/host-locale/*.json",
     "./network-speed/icon": "./features/network-speed/icon.svg",
     "./outing-checklist/locale/*.json": "./features/outing-checklist/locale/*.json",
-    "./outing-checklist/icon": "./features/outing-checklist/icon.svg"
+    "./outing-checklist/icon": "./features/outing-checklist/icon.svg",
+    "./music": "./features/music/host.mjs",
+    "./music/locale/*.json": "./features/music/locale/*.json",
+    "./music/icon": "./features/music/icon.svg",
+    "./xiaoai": "./features/xiaoai/host.mjs",
+    "./xiaoai/locale/*.json": "./features/xiaoai/locale/*.json",
+    "./xiaoai/icon": "./features/xiaoai/icon.svg"
   },
-  "files": ["index.js", "dist/client.js", "features/shortcuts/index.js", "features/shortcuts/locale/*.json", "features/shortcuts/icon.svg", "features/network-speed/host.js", "features/network-speed/server.js", "features/network-speed/host-locale/*.json", "features/network-speed/icon.svg", "features/outing-checklist/index.js", "features/outing-checklist/store.js", "features/outing-checklist/locale/*.json", "features/outing-checklist/icon.svg", "locale/*.json", "icon.svg", "cordis.patch.yml", "README.md", "docs/"],
+  "files": [
+    "index.js",
+    "dist/client.js",
+    "features/shortcuts/index.js",
+    "features/shortcuts/locale/*.json",
+    "features/shortcuts/icon.svg",
+    "features/network-speed/host.js",
+    "features/network-speed/server.js",
+    "features/network-speed/host-locale/*.json",
+    "features/network-speed/icon.svg",
+    "features/outing-checklist/index.js",
+    "features/outing-checklist/store.js",
+    "features/outing-checklist/locale/*.json",
+    "features/outing-checklist/icon.svg",
+    "locale/*.json",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "docs/",
+    "lib/*.mjs",
+    "features/music/*.mjs",
+    "features/music/locale/*.json",
+    "features/music/icon.svg",
+    "features/xiaoai/*.mjs",
+    "features/xiaoai/worker_bridge.py",
+    "features/xiaoai/automation_runtime.py",
+    "features/xiaoai/runtime/**/*.py",
+    "features/xiaoai/requirements.txt",
+    "features/xiaoai/stop-commands.json",
+    "features/xiaoai/locale/*.json",
+    "features/xiaoai/icon.svg"
+  ],
   "scripts": {
     "build": "node scripts/build.mjs",
     "check": "node scripts/check.mjs",
@@ -27,7 +64,20 @@
     "verify": "npm run build && npm run check && npm test"
   },
   "dsh": {
-    "bundle": { "patch": "./cordis.patch.yml" },
-    "client": { "platform": "web", "immediately": true, "inject": ["@deepseek-ai/dsh-client-ui-sidebar", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-locale"] }
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "dependencies": {
+    "qrcode": "^1.5.4"
   }
 }

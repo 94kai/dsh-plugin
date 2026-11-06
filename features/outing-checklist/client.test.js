@@ -12,7 +12,7 @@ function setup() {
   return module.factory(name => { assert.equal(name, 'react'); return React; });
 }
 
-test('client registers paired sidebar launcher and main panel through scoped injects', () => {
+test('client registers paired homepage launcher and main panel through scoped injects', () => {
   const plugin = setup();
   const registrations = [], disposals = [], localeCalls = [], navigations = [];
   let selected = 'local.outing-checklist';
@@ -28,13 +28,14 @@ test('client registers paired sidebar launcher and main panel through scoped inj
   plugin.apply(ctx);
   assert.equal(registrations.length, 2);
   const main = registrations.find(r => r.meta.name === 'main');
-  const sidebar = registrations.find(r => r.meta.name === 'sidebar.panellist');
+  const sidebar = registrations.find(r => r.meta.name === 'local.pocket-kit.home.tool');
+  assert.equal(registrations.some(r=>r.meta.name==='sidebar.panellist'),false);
   assert.equal(main.meta.key, sidebar.meta.id);
   assert.equal(sidebar.meta.label(), '出门清单');
-  assert.equal(sidebar.meta.order, 90);
+  assert.equal(sidebar.meta.order, 30);
   assert.equal(typeof sidebar.component, 'function');
   main.component().props.back();
-  assert.deepEqual(navigations, [null]);
+  assert.deepEqual(navigations, ['pocket-kit.home']);
   navigations.length = 0;
   disposals.at(-1)();
   assert.deepEqual(navigations, [null]);

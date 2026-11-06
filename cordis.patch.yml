@@ -11,3 +11,9 @@
     - id: pocket-kit-outing-checklist
       name: '@local/pocket-kit/outing-checklist'
       config: {}
+    - id: pocket-kit-music
+      name: '@local/pocket-kit/music'
+      config: {}
+    - id: pocket-kit-xiaoai
+      name: '@local/pocket-kit/xiaoai'
+      config: {}
