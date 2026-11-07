@@ -7,8 +7,8 @@ window.__ModuleLoader__.load({
     const NS = 'pocket-kit-home';
     /* HOME_STARTUP */
     const dictionaries = {
-      zh: {title:'首页',subtitle:'工具和常用网站，都在这里。',tools:'常用工具',links:'快捷链接',details:'详情与备注',chat:'返回对话',loading:'正在加载快捷链接…',error:'快捷链接暂时无法加载。工具入口仍可使用。',retry:'重新加载',empty:'还没有配置快捷链接。',newTab:'在新标签页打开',refresh:'刷新链接',open:'打开'},
-      en: {title:'Home',subtitle:'Your tools and everyday links, in one place.',tools:'Tools',links:'Quick links',details:'Details and notes',chat:'Back to chat',loading:'Loading quick links…',error:'Quick links are unavailable. Your tools are still accessible.',retry:'Retry',empty:'No quick links configured yet.',newTab:'Opens in a new tab',refresh:'Refresh links',open:'Open'}
+      zh: {title:'工具箱',subtitle:'工具和常用网站，都在这里。',tools:'常用工具',links:'快捷链接',details:'详情与备注',chat:'返回对话',loading:'正在加载快捷链接…',error:'快捷链接暂时无法加载。工具入口仍可使用。',retry:'重新加载',empty:'还没有配置快捷链接。',newTab:'在新标签页打开',refresh:'刷新链接',open:'打开'},
+      en: {title:'Toolbox',subtitle:'Your tools and everyday links, in one place.',tools:'Tools',links:'Quick links',details:'Details and notes',chat:'Back to chat',loading:'Loading quick links…',error:'Quick links are unavailable. Your tools are still accessible.',retry:'Retry',empty:'No quick links configured yet.',newTab:'Opens in a new tab',refresh:'Refresh links',open:'Open'}
     };
     const css = `
 .pk-home{height:100%;min-width:0;box-sizing:border-box;overflow:auto;padding:24px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base);font:14px/1.5 system-ui,sans-serif}
@@ -22,7 +22,7 @@ window.__ModuleLoader__.load({
 @media(max-width:360px){.pk-home-links{grid-template-columns:1fr}.pk-home-title h1{font-size:22px}.pk-home-tool{padding:12px}.pk-home-section-head{align-items:flex-start}}
 @media(prefers-reduced-motion:no-preference){.pk-home-tool,.pk-home-link{transition:background-color .15s}}
 `;
-    function HomeIcon({size=20}){return h('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:'M3 10.5 12 3l9 7.5M5 9v11h5v-6h4v6h5V9'}));}
+    function HomeIcon({size=20}){return h('svg',{width:size,height:size,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.7,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:'M4 7h16v14H4z M9 7V3h6v4 M4 12h16 M10 12v3h4v-3'}));}
     function useLinks(){
       const [state,setState]=React.useState({loading:true,error:false,items:[]}),[version,setVersion]=React.useState(0);
       React.useEffect(()=>{

@@ -5,8 +5,8 @@ window.__ModuleLoader__.load({
     const h = React.createElement;
     const NS = 'shortcut-links';
     const dictionaries = {
-      en: { toolkit: 'Pocket Kit', heading: 'Quick links', details: 'Details and notes', newTab: 'Opens in a new tab', back: 'Back to home', description: 'Your saved websites, descriptions and notes.', loading: 'Loading…', error: 'Could not load links. Please try again.', retry: 'Retry', open: 'Open website ↗', copyUrl: 'Copy URL', copyNotes: 'Copy notes', copied: 'Copied', copyError: 'Copy failed. Please select the text and copy manually.', notes: 'Notes', noNotes: 'No notes', count: ' saved links' },
-      zh: { toolkit: '随身工具箱', heading: '快捷访问', details: '详情与备注', newTab: '在新标签页打开', back: '返回首页', description: '常用网站快捷入口，附带说明、备注和图标。', loading: '正在加载…', error: '入口加载失败，请重试。', retry: '重试', open: '打开网站 ↗', copyUrl: '复制网址', copyNotes: '复制备注', copied: '已复制', copyError: '复制失败，请选中文字手动复制。', notes: '备注', noNotes: '暂无备注', count: ' 个快捷入口' },
+      en: { toolkit: 'Pocket Kit', heading: 'Quick links', details: 'Details and notes', newTab: 'Opens in a new tab', back: 'Back to toolbox', description: 'Your saved websites, descriptions and notes.', loading: 'Loading…', error: 'Could not load links. Please try again.', retry: 'Retry', open: 'Open website ↗', copyUrl: 'Copy URL', copyNotes: 'Copy notes', copied: 'Copied', copyError: 'Copy failed. Please select the text and copy manually.', notes: 'Notes', noNotes: 'No notes', count: ' saved links' },
+      zh: { toolkit: '随身工具箱', heading: '快捷访问', details: '详情与备注', newTab: '在新标签页打开', back: '返回工具箱', description: '常用网站快捷入口，附带说明、备注和图标。', loading: '正在加载…', error: '入口加载失败，请重试。', retry: '重试', open: '打开网站 ↗', copyUrl: '复制网址', copyNotes: '复制备注', copied: '已复制', copyError: '复制失败，请选中文字手动复制。', notes: '备注', noNotes: '暂无备注', count: ' 个快捷入口' },
     };
     const css = `
       .shortcuts-links-button:hover { background:var(--dsw-alias-interactive-bg-hover); }

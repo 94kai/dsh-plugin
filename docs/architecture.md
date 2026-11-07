@@ -44,3 +44,11 @@
 - Agent 的 `pocket_music` / `pocket_xiaoai` 先 help 发现具体操作，再 request；与 UI 共用业务方法。登录授权与下载器安装不开放给 Agent 工具。真实设备控制必须符合用户明确请求。
 - 查询请求取消会中止音乐搜索/刮削/标签读取的网络或子进程；已接收的下载任务归 Host，页面关闭不撤销入队。卸载会中止本实例任务并清理。
 - 小爱 worker 是业务必须的设备协议桥，不是替代 DSH GUI 的服务器；默认不开启，显式启动也不连接或接管其他进程的旧 worker。详细数据与验证见[迁移记录](music-xiaoai-migration.md)。
+
+## 1.3.0 五模块扩展
+
+新增独立Host子路径 file-manager、health、beijing-pass、terminal、bill-manager；共10个业务Host和1个客户端载体。客户端 utilities 工厂显式内联五个独立 view.js，业务后端仍按模块隔离。utility-host复用FeatureService，并为原始上传/下载提供认证路由。详见[五模块迁移记录](utilities-migration.md)。
+
+## 1.4.0 原生终端增强合包
+
+terminal-touch-keys工厂和viewport辅助逻辑纳入根构建，与已有六个工厂一起输出唯一dist/client.js。沿用原生终端扩展桥与侧栏扩展桥，不增加Host条目、不增加独立安装包。独立terminal-touch-keys安装已移除，旧目录归档至.local/legacy-plugins。新增功能默认遵守AGENTS的单包迭代约定。

@@ -8,16 +8,33 @@ const entries = [
   ['network-speed', 'client-entry.js'],
   ['outing-checklist', 'client.js'],
   ['media', 'client.js'],
+  ['utilities','client.js'],
+  ['terminal-touch-keys','client.js'],
 ];
 const viewSources = Object.fromEntries(await Promise.all(['music', 'xiaoai'].map(async name => [name, await readFile(new URL(`features/${name}/view.js`, root), 'utf8')])));
 const homeStartup = await readFile(new URL('features/home/startup.js', root), 'utf8');
+const awaitedMessages = await readFile(new URL('features/utilities/messages.json',root),'utf8');
+const utilityViews = Object.fromEntries(await Promise.all(['health','file-manager','beijing-pass','bill-manager','terminal'].map(async name=>[name,await readFile(new URL(`features/${name}/view.js`,root),'utf8')])));
 const factories = [];
 for (const [name, file] of entries) {
   let source = await readFile(new URL(`features/${name}/${file}`, root), 'utf8');
+  if (name === 'terminal-touch-keys') {
+    const engine=(await readFile(new URL('features/terminal-touch-keys/viewport.js',root),'utf8')).replace(/^export /gm,'');
+    source=source.replace('/* TERMINAL_VIEWPORT */',()=>engine);
+    const navigation=(await readFile(new URL('features/terminal-touch-keys/navigation.js',root),'utf8')).replace(/^export /gm,'');
+    source=source.replace('/* TERMINAL_NAVIGATION */',()=>navigation);
+  }
   if (name === 'home') {
     const marker = '/* HOME_STARTUP */';
     if (source.split(marker).length !== 2) throw new Error('Expected one home startup marker');
     source = source.replace(marker, () => homeStartup);
+  }
+  if (name === 'utilities') {
+    source=source.replace('/* UTILITY_MESSAGES */',()=>JSON.stringify(JSON.parse(awaitedMessages)).slice(1,-1));
+    for (const feature of ['health','file-manager','beijing-pass','bill-manager','terminal']) {
+      const marker = `/* ${feature.toUpperCase().replaceAll('-','_')}_VIEW */`;
+      source = source.replace(marker, () => utilityViews[feature]);
+    }
   }
   if (name === 'media') {
     for (const feature of ['music', 'xiaoai']) {

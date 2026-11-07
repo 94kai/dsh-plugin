@@ -1,0 +1,5 @@
+import { HealthModule } from './index.mjs';
+import { dataDir } from '../../lib/module-host.mjs';
+import { mountUtility } from '../../lib/utility-host.mjs';
+export const inject=['connection','tools'];
+export function apply(ctx){mountUtility(ctx,{name:'health',title:'健康记录',async factory(){const module=new HealthModule({dataDir});await module.initialize();return module;},help:{notes:'健康记录不是医疗诊断。写入记录使用 cells 对象；字段 id 从 people 返回的 columns 获取。修改与删除必须使用当前 revision。',routes:[['GET','/status','仅记录数量与就绪状态'],['GET','/people/<id>/records?offset=0&limit=10','分页记录，limit 1–50'],['GET','/people/<id>/records/<recordId>','单条记录'],['GET','/people','人员与字段定义'],['POST','/people','{name} 新建人员'],['GET','/people/<id>','人员、显示配置与记录'],['PUT','/people/<id>/config','{revision,visible?,focused?,hideEmpty?}'],['POST','/people/<id>/records','{cells:{c0:日期,...}}'],['PUT','/people/<id>/records/<recordId>','{revision,cells} 完整字段'],['DELETE','/people/<id>/records/<recordId>','{revision} 不可恢复'],['GET','/people/<id>/export?scope=all','界面下载 Excel']]}});}

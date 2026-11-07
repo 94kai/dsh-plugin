@@ -17,3 +17,18 @@
     - id: pocket-kit-xiaoai
       name: '@local/pocket-kit/xiaoai'
       config: {}
+    - id: pocket-kit-file-manager
+      name: '@local/pocket-kit/file-manager'
+      config: {}
+    - id: pocket-kit-health
+      name: '@local/pocket-kit/health'
+      config: {}
+    - id: pocket-kit-beijing-pass
+      name: '@local/pocket-kit/beijing-pass'
+      config: {}
+    - id: pocket-kit-terminal
+      name: '@local/pocket-kit/terminal'
+      config: {}
+    - id: pocket-kit-bill-manager
+      name: '@local/pocket-kit/bill-manager'
+      config: {}
