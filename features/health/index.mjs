@@ -31,6 +31,7 @@ export class HealthModule {
         CREATE TABLE IF NOT EXISTS people (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, visible TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1);
         CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY, person_id INTEGER NOT NULL REFERENCES people(id), cells TEXT NOT NULL, revision INTEGER NOT NULL DEFAULT 1);
         CREATE INDEX IF NOT EXISTS records_person ON records(person_id);
+        CREATE TABLE IF NOT EXISTS custom_columns (id INTEGER PRIMARY KEY AUTOINCREMENT, person_id INTEGER NOT NULL REFERENCES people(id), label TEXT NOT NULL, UNIQUE(person_id,label));
         CREATE TABLE IF NOT EXISTS imports (fingerprint TEXT PRIMARY KEY, person_id INTEGER NOT NULL REFERENCES people(id), record_count INTEGER NOT NULL, imported_at TEXT NOT NULL);`);
       this.db.exec('BEGIN IMMEDIATE');
       try {
@@ -65,7 +66,26 @@ export class HealthModule {
   records(id) {
     return this.db.prepare('SELECT id,cells,revision FROM records WHERE person_id=? ORDER BY id').all(id).map(row => ({ ...row, cells: JSON.parse(row.cells) })).sort((a, b) => a.cells.c0.replace(/[^\d-].*$/, '').localeCompare(b.cells.c0.replace(/[^\d-].*$/, '')) || a.id - b.id);
   }
-  cleanCells(cells) {
+  columns(personId) {
+    return [...columns, ...this.db.prepare('SELECT id,label FROM custom_columns WHERE person_id=? ORDER BY id').all(personId).map(c => ({id:'custom_'+c.id,label:c.label}))];
+  }
+  addColumn(person, input) {
+    if (Object.keys(input).some(k => !['label','revision'].includes(k))) throw fail('字段参数无效');
+    const label = typeof input.label === 'string' ? input.label.trim() : '';
+    if (!label || label.length > 80 || /[\x00-\x1f\x7f]/.test(label)) throw fail('字段名称需为 1–80 个字符');
+    const existing = this.columns(person.id);
+    if (existing.some(c => c.label === label)) throw fail('该字段已存在，请使用现有字段', 409);
+    if (existing.length >= columns.length + 100) throw fail('每位人员最多添加 100 个自定义字段');
+    this.db.exec('BEGIN IMMEDIATE');
+    try {
+      const id = 'custom_' + this.db.prepare('INSERT INTO custom_columns(person_id,label) VALUES(?,?)').run(person.id,label).lastInsertRowid;
+      const result = this.db.prepare('UPDATE people SET visible=?,revision=revision+1 WHERE id=? AND revision=?').run(JSON.stringify([...person.visible,id]),person.id,this.revision(input.revision));
+      if (!result.changes) throw fail('字段配置已变更，请重新读取后重试',409);
+      this.db.exec('COMMIT');
+      return {column:{id,label},person:this.person(person.id)};
+    } catch(error) { this.db.exec('ROLLBACK'); throw error; }
+  }
+  cleanCells(cells, columns) {
     if (!cells || typeof cells !== 'object' || Array.isArray(cells) || Object.keys(cells).some(key => !columns.some(column => column.id === key))) throw fail('数据列无效');
     const cleaned = {};
     for (const { id } of columns) {
@@ -96,9 +116,17 @@ export class HealthModule {
     if (route === '/status' && req.method === 'GET') return this.send(res,{ready:true,people:this.db.prepare('SELECT count(*) AS n FROM people').get().n,records:this.db.prepare('SELECT count(*) AS n FROM records').get().n});
     if (route === '/people' && req.method === 'GET') return this.send(res, { people: this.db.prepare('SELECT id,name FROM people ORDER BY id').all(), columns });
     if (route === '/people' && req.method === 'POST') return this.send(res, { person: this.addPerson((await this.body(req)).name) }, 201);
-    const match = /^\/people\/([1-9]\d*)(?:\/(config|records|export)(?:\/([1-9]\d*))?)?$/.exec(route);
+    const match = /^\/people\/([1-9]\d*)(?:\/(config|columns|records|export)(?:\/([1-9]\d*))?)?$/.exec(route);
     if (!match) throw fail('健康接口不存在', 404);
     const person = this.person(match[1]);
+    return this.handlePerson(req, res, url, match, person);
+  }
+  async handlePerson(req, res, url, match, person) {
+    const columns = this.columns(person.id);
+    if (match[2] === 'columns' && !match[3]) {
+      if (req.method === 'GET') return this.send(res, {columns,revision:person.revision});
+      if (req.method === 'POST') return this.send(res, this.addColumn(person, await this.body(req)), 201);
+    }
     if (match[2] === 'records' && req.method === 'GET') {
       const records=this.records(person.id);
       if(match[3]){const record=records.find(r=>r.id===Number(match[3]));if(!record)throw fail('记录不存在',404);return this.send(res,{record});}
@@ -122,7 +150,7 @@ export class HealthModule {
       return this.send(res, { person: this.person(person.id) });
     }
     if (match[2] === 'records' && ((!match[3] && req.method === 'POST') || (match[3] && req.method === 'PUT'))) {
-      const input = await this.body(req), cells = JSON.stringify(this.cleanCells(input.cells));
+      const input = await this.body(req), cells = JSON.stringify(this.cleanCells(input.cells, columns));
       let id;
       if (match[3]) {
         id = Number(match[3]);

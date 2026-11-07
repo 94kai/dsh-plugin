@@ -68,6 +68,10 @@ Agent的每次bash调用是独立shell，不能假定前一次 `export` 会延�
 - 截图位于系统临时目录（`/tmp/pocket-kit-preview-*`），未提交；未做真实设备、软键盘或业务写入验收。持久状态文件未进入项目。
 - 同一次持久登录会话还实页验证了：音乐试听（`readyState=4`、267 秒、无 media error）、完整 FLAC 下载到本机（28,988,615 字节、无 download failure）、音乐信息弹窗的关闭按钮/背景/Escape 三种关闭方式，以及各页面「返回会话 / 返回首页」和上次页面记忆；未把含私人文件名的截图放入仓库或发布包。
 
+## 健康与记账单预览（2026-11-08）
+
+`node scripts/preview-ui.mjs --records --all` 仅打开健康与记账单，不访问文件页；覆盖桌面及四种手机宽度的明暗主题。检查默认表格、记录编辑/显示字段/管理弹层和账单导入/规则编辑入口，仅打开并取消，不保存业务数据。原GUI9组验收通过，具体结果见两个功能文档。隔离写入交互使用 `node scripts/records-browser-check.mjs`，所有请求均被虚构接口拦截。
+
 ## 迁移或恢复
 
 迁移只需保持目录层级（`browser/chromium_headless_shell-1254/...` 与各工具目录的 `node_modules/`），脚本会自动发现；换机器时把整个 `~/tools/pocket-kit-preview/` 复制过去即可，不建议重新走CDN下载。迁移后先验证：

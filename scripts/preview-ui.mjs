@@ -14,6 +14,7 @@ const help=`工具箱实页截图（只浏览，不修改业务数据）
   node scripts/preview-ui.mjs                 # 手机390px：首页、文件页
   node scripts/preview-ui.mjs --all           # 桌面、320/375/390/430px手机、390px暗色
   node scripts/preview-ui.mjs --music         # 额外打开音乐页，核验无小爱切换入口
+  node scripts/preview-ui.mjs --records      # 仅健康、记账单；--all 检查四种手机宽度明暗主题
   node scripts/preview-ui.mjs --header        # 返回会话，核验标题工具箱图标可见且可打开原工具箱
   node scripts/preview-ui.mjs --reset-login   # 删除已保存的登录状态；下次需要 token
   node scripts/preview-ui.mjs --help
@@ -104,6 +105,7 @@ async function main(){
     ['mobile-430',{...phone,viewport:{width:430,height:932}}],
     ['mobile-dark',{...phone,colorScheme:'dark'}],
   ]:[['mobile-390',phone]];
+  if(process.argv.includes('--all')&&process.argv.includes('--records'))for(const width of [320,375,430])profiles.push(['mobile-dark-'+width,{...phone,viewport:{width,height:812},colorScheme:'dark'}]);
   const withMusic=process.argv.includes('--music');
   const output=await mkdtemp(join(tmpdir(),'pocket-kit-preview-'));
   const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
@@ -135,6 +137,53 @@ async function main(){
           await launcher.screenshot({path:join(output,'header-icon-'+name+'.png')});
           await launcher.click();await home.waitFor({state:'visible'});
           console.log(name,'标题入口打开/返回通过',JSON.stringify(geometry));
+        }
+        if(process.argv.includes('--records')){
+          page.on('dialog',dialog=>dialog.type()==='confirm'?dialog.accept():dialog.dismiss());
+          for(const feature of ['health','bill-manager']){
+            await page.locator('.pk-home [data-tool="'+feature+'"]').click();
+            const panel=page.locator('.pk-util');await panel.locator('fieldset:enabled').waitFor();
+            if(await panel.locator('[role="alert"]').count())throw Error(feature+' 加载失败（未输出私人内容）');
+            await panel.screenshot({path:join(output,feature+'-'+name+'.png')});
+            const geometry=await panel.evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
+            console.log(name,feature,JSON.stringify(geometry));
+            if(geometry.scrollWidth>geometry.width||errors.length)throw Error(feature+' 页面溢出或运行错误');
+            if(feature==='health'){
+              await panel.locator('.pk-health-table').waitFor();
+              const healthDensity=await panel.locator('.pk-health-table').evaluate(el=>({tableTop:Math.round(el.getBoundingClientRect().top-el.closest('.pk-util').getBoundingClientRect().top),rows:el.querySelectorAll('tbody tr').length,rowHeight:Math.round(el.querySelector('tbody tr')?.getBoundingClientRect().height||0)}));
+              console.log(name,'健康密度',JSON.stringify(healthDensity));
+              if(healthDensity.tableTop>130||healthDensity.rowHeight>42)throw Error('健康表格不够紧凑');
+              await panel.getByRole('button',{name:'新增',exact:true}).click();
+              const sheet=panel.locator('dialog');await sheet.waitFor({state:'visible'});
+              await sheet.screenshot({path:join(output,'health-editor-'+name+'.png')});
+              await page.keyboard.press('Escape');await sheet.waitFor({state:'hidden'});
+              await panel.getByRole('button',{name:'更多',exact:true}).click();
+              await panel.getByRole('button',{name:'显示字段',exact:true}).click();
+              await sheet.waitFor({state:'visible'});await sheet.getByRole('button',{name:'关闭',exact:true}).click();
+              await panel.getByRole('button',{name:'更多',exact:true}).click();
+              await panel.getByRole('button',{name:'管理',exact:true}).click();
+              await sheet.getByRole('button',{name:'添加字段',exact:true}).waitFor();
+              await sheet.getByRole('button',{name:'关闭',exact:true}).click();
+            }else{
+              const density=await panel.locator('.pk-bill-table').evaluate(el=>{const r=el.getBoundingClientRect(),panel=el.closest('.pk-util').getBoundingClientRect();return {tableTop:Math.round(r.top-panel.top),tableHeight:Math.round(r.height),rows:el.querySelectorAll('tbody tr').length,rowHeight:Math.round(el.querySelector('tbody tr')?.getBoundingClientRect().height||0)};});
+              console.log(name,'账单密度',JSON.stringify(density));
+              if(density.tableTop>130||density.rowHeight>40)throw Error('账单布局不够紧凑');
+              await panel.getByRole('button',{name:'更多',exact:true}).click();
+              await panel.getByRole('button',{name:'导入账单',exact:true}).click();
+              await panel.locator('dialog').screenshot({path:join(output,'bill-import-'+name+'.png')});
+              await panel.locator('dialog').getByRole('button',{name:'关闭',exact:true}).click();
+              await panel.getByRole('button',{name:'更多',exact:true}).click();
+              await panel.getByRole('button',{name:'分类规则',exact:true}).click();
+              await panel.locator('dialog').waitFor({state:'visible'});
+              await panel.locator('dialog').screenshot({path:join(output,'bill-rules-'+name+'.png')});
+              await page.keyboard.press('Escape');await panel.locator('dialog').waitFor({state:'hidden'});
+            }
+            console.log(name,feature,'只读交互通过');
+            if(errors.length)throw Error(feature+' 交互运行错误');
+            await panel.getByRole('button',{name:'会话',exact:true}).waitFor({state:'visible'});
+            await panel.getByRole('button',{name:'首页',exact:true}).click();
+          }
+          continue;
         }
         await home.screenshot({path:join(output,'home-'+name+'.png')});
         const homeWidth=await home.evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
