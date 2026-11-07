@@ -66,3 +66,22 @@ plugin_manager已移除独立包并应用根包1.4.0（application: applied、wa
 无当前会话仍显示选择/新建会话提示，不自动创建会话或PTY，隐藏会话方案保持撤回。
 
 `npm run verify`：128项通过（新增紧凑样式、无提示、可访问名称和禁用状态回归）。本次仅重新启用当前根客户端载体，返回application: applied、warnings=[]；没有卸载其他业务Host。Client Inspect当前未取得按键Slot，真实手机效果需刷新后查看，不能当作已完成视觉验收。
+
+## 1.6.0：取消自动命令、工具箱复用原生终端
+
+用户取消自动执行`t`功能；该功能没有部署，源码改动已撤回，实验文件归档到.local，当前构建不含启动命令或相关回调。
+
+工具箱「终端」卡片现在由terminal-touch-keys工厂贡献，id为pocket-kit.native-terminal，与左侧条目复用同一main入口及原生导航方法。旧pocket-kit.terminal卡片/视图/Host/API/Agent工具退役，旧源码归档到.local；原tmux会话与terminal.json不删除。包不再导出或发布features/terminal，patch移除pocket-kit-terminal。客户端与后端仍同属当前安装包。
+
+当前依旧需要可用的聊天会话，不自动创建隐藏会话；已有终端只聚焦，不执行t。36px按键和键盘避让不变。未修改DSH内置文件。
+
+### 1.6.0 验证与安装
+
+- `npm run verify`：128项通过；打包检查确认features/terminal、自动startup代码、.local私人数据均不在发布包。
+- 安装过程中已有dshmarket的GitHub源触发prepare失败（tsc缺失），不是工具箱构建失败。经用户明确批准，通过plugin_manager将dshmarket改为同版本1.73.14 npm发布包，未升级、未手工重写profile、未删除市场数据；安装返回applied。
+- 重新安装当前根包1.6.0返回application: applied、warnings=[]。Host Config确认旧@local/pocket-kit/terminal条目为0。
+- 安装后初次Client Inspect尚未取得工具箱Slot，仍需刷新原GUI检查卡片。单元注册测试确认原生终端卡片唯一、与侧栏共用panel；不将注册测试等同于真实点击验收。
+
+## 仅保留工具箱入口（2026-11-07）
+
+按用户要求移除sidebar.panellist中的独立终端条目。工具箱终端卡片、pocket-kit.native-terminal主入口、原生导航时序、36px按键与键盘避让保持不变；不结束现有终端或修改会话数据。不改宿主文件、不卸载整包，仅构建并重新加载根客户端载体。相关注册回归确保侧栏终端为0、工具箱终端仍唯一。构建与18项针对性测试通过；根客户端载体重新启用返回applied，实时Inspect确认侧栏已无终端条目、工具箱仍有终端卡片。未卸载业务Host或操作用户终端。

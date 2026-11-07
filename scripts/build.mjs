@@ -14,7 +14,7 @@ const entries = [
 const viewSources = Object.fromEntries(await Promise.all(['music', 'xiaoai'].map(async name => [name, await readFile(new URL(`features/${name}/view.js`, root), 'utf8')])));
 const homeStartup = await readFile(new URL('features/home/startup.js', root), 'utf8');
 const awaitedMessages = await readFile(new URL('features/utilities/messages.json',root),'utf8');
-const utilityViews = Object.fromEntries(await Promise.all(['health','file-manager','beijing-pass','bill-manager','terminal'].map(async name=>[name,await readFile(new URL(`features/${name}/view.js`,root),'utf8')])));
+const utilityViews = Object.fromEntries(await Promise.all(['health','file-manager','beijing-pass','bill-manager'].map(async name=>[name,await readFile(new URL(`features/${name}/view.js`,root),'utf8')])));
 const factories = [];
 for (const [name, file] of entries) {
   let source = await readFile(new URL(`features/${name}/${file}`, root), 'utf8');
@@ -31,7 +31,7 @@ for (const [name, file] of entries) {
   }
   if (name === 'utilities') {
     source=source.replace('/* UTILITY_MESSAGES */',()=>JSON.stringify(JSON.parse(awaitedMessages)).slice(1,-1));
-    for (const feature of ['health','file-manager','beijing-pass','bill-manager','terminal']) {
+    for (const feature of ['health','file-manager','beijing-pass','bill-manager']) {
       const marker = `/* ${feature.toUpperCase().replaceAll('-','_')}_VIEW */`;
       source = source.replace(marker, () => utilityViews[feature]);
     }

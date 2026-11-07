@@ -1,6 +1,6 @@
 {
   "name": "@local/pocket-kit",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "private": true,
   "type": "module",
   "description": "随身工具箱：文件、进京证、健康、终端、记账单、音乐与日常工具",
@@ -33,9 +33,6 @@
     "./beijing-pass": "./features/beijing-pass/host.mjs",
     "./beijing-pass/locale/*.json": "./features/beijing-pass/locale/*.json",
     "./beijing-pass/icon": "./features/beijing-pass/icon.svg",
-    "./terminal": "./features/terminal/host.mjs",
-    "./terminal/locale/*.json": "./features/terminal/locale/*.json",
-    "./terminal/icon": "./features/terminal/icon.svg",
     "./bill-manager": "./features/bill-manager/host.mjs",
     "./bill-manager/locale/*.json": "./features/bill-manager/locale/*.json",
     "./bill-manager/icon": "./features/bill-manager/icon.svg"
@@ -80,9 +77,6 @@
     "features/beijing-pass/*.mjs",
     "features/beijing-pass/locale/*.json",
     "features/beijing-pass/icon.svg",
-    "features/terminal/*.mjs",
-    "features/terminal/locale/*.json",
-    "features/terminal/icon.svg",
     "features/bill-manager/*.mjs",
     "features/bill-manager/locale/*.json",
     "features/bill-manager/icon.svg",

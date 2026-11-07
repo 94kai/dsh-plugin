@@ -49,8 +49,8 @@ window.__ModuleLoader__.load({
     }
     return {inject:['slots','locale','sidebarRight','layout'],apply(ctx){
       ctx.effect(()=>ctx.locale.register(ns,{
-        zh:{dedicatedHome:'独立终端 · 默认 Home 目录',opening:'正在打开终端…',back:'返回对话',retry:'重试',terminal:'终端',openTerminal:'打开 DSH 终端',selectSession:'请先选择一个会话或返回对话，再打开终端。',openFailed:'终端暂时无法打开，请刷新后重试。',pad:'方向按钮：上下左右滑动，点按边缘单步移动，中心不发送',title:'终端辅助键盘',left:'向左',up:'向上',down:'向下',right:'向右',escape:'Esc：退出或取消',interrupt:'Ctrl+C：中断当前程序',drag:'可向任意方向拖动',hint:'滑动控制方向 · 边缘点按单步 · 中心不发送',unavailable:'终端未连接或不可输入，请先取得控制权'},
-        en:{dedicatedHome:'Dedicated terminal · Home directory',opening:'Opening terminal…',back:'Back to chat',retry:'Retry',terminal:'Terminal',openTerminal:'Open DSH terminal',selectSession:'Select a session or return to chat before opening a terminal.',openFailed:'Could not open terminal. Refresh and retry.',pad:'Direction pad: swipe or tap an edge; center does not send a key',title:'Terminal touch keys',left:'Left',up:'Up',down:'Down',right:'Right',escape:'Escape',interrupt:'Ctrl+C: interrupt current program',drag:'Drag in any direction',hint:'Swipe to move · Tap an edge for one step · Center is inactive',unavailable:'Terminal disconnected or read-only; take control first'}
+        zh:{toolDescription:'打开 DSH 原生终端',dedicatedHome:'独立终端 · 默认 Home 目录',opening:'正在打开终端…',back:'返回对话',retry:'重试',terminal:'终端',openTerminal:'打开 DSH 终端',selectSession:'请先选择一个会话或返回对话，再打开终端。',openFailed:'终端暂时无法打开，请刷新后重试。',pad:'方向按钮：上下左右滑动，点按边缘单步移动，中心不发送',title:'终端辅助键盘',left:'向左',up:'向上',down:'向下',right:'向右',escape:'Esc：退出或取消',interrupt:'Ctrl+C：中断当前程序',drag:'可向任意方向拖动',hint:'滑动控制方向 · 边缘点按单步 · 中心不发送',unavailable:'终端未连接或不可输入，请先取得控制权'},
+        en:{toolDescription:'Open the DSH native terminal',dedicatedHome:'Dedicated terminal · Home directory',opening:'Opening terminal…',back:'Back to chat',retry:'Retry',terminal:'Terminal',openTerminal:'Open DSH terminal',selectSession:'Select a session or return to chat before opening a terminal.',openFailed:'Could not open terminal. Refresh and retry.',pad:'Direction pad: swipe or tap an edge; center does not send a key',title:'Terminal touch keys',left:'Left',up:'Up',down:'Down',right:'Right',escape:'Escape',interrupt:'Ctrl+C: interrupt current program',drag:'Drag in any direction',hint:'Swipe to move · Tap an edge for one step · Center is inactive',unavailable:'Terminal disconnected or read-only; take control first'}
       }));
       const t=ctx.locale.bind(ns);let error='';const lifetime=new AbortController();
       ctx.effect(()=>()=>lifetime.abort());
@@ -64,8 +64,8 @@ window.__ModuleLoader__.load({
           if(result==='no-session'&&!signal.aborted){error=t('selectSession');ctx.layout.selectPanel(PANEL);}
         }catch{if(!signal.aborted){error=t('openFailed');ctx.layout.selectPanel(PANEL);}}
       };
-      ctx.slots.inject('sidebar.panellist',()=>ctx.slots.register({name:'sidebar.panellist',id:PANEL,order:20,label:()=>t('terminal')},TerminalIcon));
       ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:PANEL,locale:ns},props=>h(NativeEntryPage,{...props,open:openNativeTerminal,getError,back:()=>ctx.layout.selectPanel(null)})));
+      ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:PANEL,locale:ns,order:60},({renderCard,t})=>renderCard({id:'terminal',title:t('terminal'),description:t('toolDescription'),icon:h(TerminalIcon),onClick:()=>ctx.layout.selectPanel(PANEL)})));
       ctx.slots.inject('local.terminal.touch.keys',()=>ctx.slots.register({name:'local.terminal.touch.keys',id:'terminal-touch-keys',locale:ns,order:0},Toolbar));
     }};
   }

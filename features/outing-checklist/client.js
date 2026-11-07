@@ -86,7 +86,7 @@ window.__ModuleLoader__.load({
     return { inject:['slots','locale','layout'], apply(ctx) {
       ctx.effect(()=>ctx.locale.register(PANEL,{zh:{title:'出门清单'},en:{title:'Outing checklist'}}));
       ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:PANEL,locale:PANEL},()=>h(Page,{back:()=>ctx.layout.selectPanel('pocket-kit.home')})));
-      ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:PANEL,order:30,locale:PANEL,label:()=> '出门清单'},({renderCard})=>renderCard({title:'出门清单',description:'整理随身物品，出发前从容检查',icon:h(Icon),onClick:()=>ctx.layout.selectPanel(PANEL)})));
+      ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:PANEL,order:30,locale:PANEL,label:()=> '出门清单'},({renderCard})=>renderCard({id:'outing-checklist',title:'出门清单',description:'整理随身物品，出发前从容检查',icon:h(Icon),onClick:()=>ctx.layout.selectPanel(PANEL)})));
       ctx.effect(()=>()=>{if(ctx.layout.panelInfo.getSnapshot().activePanelId===PANEL)ctx.layout.selectPanel(null);});
     }};
   },

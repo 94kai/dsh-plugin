@@ -50,7 +50,7 @@ window.__ModuleLoader__.load({
         function useLocale() { return React.useSyncExternalStore(fn => ctx.locale.subscribe(fn), () => ctx.locale.getSnapshot()); }
         function HomeAction({renderCard}) {
           useLocale();
-          return renderCard({title:t('title'),description:t('subtitle'),icon:h(Gauge),onClick:()=>setOpen(true)});
+          return renderCard({id:'network-speed',title:t('title'),description:t('subtitle'),icon:h(Gauge),onClick:()=>setOpen(true)});
         }
         function Panel() {
           useLocale();

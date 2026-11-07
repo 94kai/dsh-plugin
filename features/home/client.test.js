@@ -7,7 +7,7 @@ const source=(await readFile(new URL('./client.js',import.meta.url),'utf8')).rep
 function setup(){
  let definition;
  vm.runInNewContext(source,{window:{__ModuleLoader__:{load:value=>{definition=value;}}}});
- return definition.factory(name=>{assert.equal(name,'react');return {createElement:(type,props,...children)=>({type,props,children})};});
+ return definition.factory(name=>{assert.equal(name,'react');return {createElement:(type,props,...children)=>({type,props,children}),useState:value=>[value,()=>{}],useEffect:()=>{}};});
 }
 test('homepage declares tool slot and exactly one footer entry, never a top sidebar entry',()=>{
  const plugin=setup(),registrations=[],disposers=[],nav=[];
@@ -37,6 +37,16 @@ test('homepage declares tool slot and exactly one footer entry, never a top side
  nav.length=0;main.component({}).props.open('shortcuts');assert.deepEqual(nav,['shortcuts']);
  nav.length=0;disposers.at(-1)();assert.deepEqual(nav,[null]);
  selected='another-panel';nav.length=0;disposers.at(-1)();assert.deepEqual(nav,[]);
+});
+test('toolbox stays Chinese and normalizes contributed cards by stable id',()=>{
+ const plugin=setup(),registrations=[];let dictionaries,renderCard,opened=false;
+ plugin.apply({effect:fn=>fn(),locale:{register:(_ns,value)=>{dictionaries=value;return()=>{};}},slots:{inject:(_key,fn)=>fn(),register:(meta,component)=>{registrations.push({meta,component});return()=>{};}},layout:{selectPanel(){},panelInfo:{getSnapshot:()=>({})}}});
+ assert.equal(dictionaries.zh.title,'工具箱');assert.equal(dictionaries.en.title,'工具箱');
+ const component=registrations.find(r=>r.meta.name==='main').component;
+ const element=component({t:key=>dictionaries.en[key],renderSlot:(_key,props)=>{renderCard=props.renderCard;return [];}});element.type(element.props);
+ const card=renderCard({id:'file-manager',title:'Files',description:'English fallback',icon:'icon',onClick:()=>{opened=true;}});
+ assert.equal(card.props['data-tool'],'file-manager');assert.equal(card.props['aria-label'],'文件，浏览、整理与传输文件');assert.equal(card.props.style['--tool-color'],'#6588d8');
+ card.props.onClick();assert.equal(opened,true);
 });
 test('home keeps mobile, private-link and safe external navigation constraints',()=>{
  assert.match(source,/44px/);assert.match(source,/safe-area-inset-bottom/);

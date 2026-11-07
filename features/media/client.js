@@ -46,7 +46,7 @@ window.__ModuleLoader__.load({
       for(const [tab,label,order] of [['music','音乐',10],['xiaoai','小爱音箱',20]]){
         const panel=`pocket-kit.${tab}`;
         ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:panel},()=>h(Page,{tab,navigate:id=>ctx.layout.selectPanel(`pocket-kit.${id}`),back:()=>ctx.layout.selectPanel('pocket-kit.home')})));
-        ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:panel,order,label:()=>label},({renderCard})=>renderCard({title:label,description:tab==='music'?'搜索、下载与整理喜欢的音乐':'播放收藏、管理歌单和音箱',icon:h(Icon,{type:tab}),onClick:()=>ctx.layout.selectPanel(panel)})));
+        ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:panel,order,label:()=>label},({renderCard})=>renderCard({id:tab,title:label,description:tab==='music'?'搜索、下载与整理喜欢的音乐':'播放收藏、管理歌单和音箱',icon:h(Icon,{type:tab}),onClick:()=>ctx.layout.selectPanel(panel)})));
       }
       ctx.effect(()=>()=>{const current=ctx.layout.panelInfo.getSnapshot().activePanelId;if(current==='pocket-kit.music'||current==='pocket-kit.xiaoai')ctx.layout.selectPanel(null);});
     }};

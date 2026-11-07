@@ -52,3 +52,7 @@
 ## 1.4.0 原生终端增强合包
 
 terminal-touch-keys工厂和viewport辅助逻辑纳入根构建，与已有六个工厂一起输出唯一dist/client.js。沿用原生终端扩展桥与侧栏扩展桥，不增加Host条目、不增加独立安装包。独立terminal-touch-keys安装已移除，旧目录归档至.local/legacy-plugins。新增功能默认遵守AGENTS的单包迭代约定。
+
+## 1.6.0 终端统一
+
+旧轻量terminal Host退役，当前为9个业务Host和1个客户端载体。工具箱终端由terminal-touch-keys工厂贡献，指向与侧栏相同的pocket-kit.native-terminal；utilities工厂只内联文件、进京证、健康、记账单四个视图。原tmux和配置数据保留，自动t命令未部署且已取消。

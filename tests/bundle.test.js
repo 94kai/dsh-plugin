@@ -21,24 +21,28 @@ test('built client registers only Pocket Kit and composes all feature entries', 
     slots: { inject: (key, callback) => callback(), register: (meta, component) => { registrations.push({ meta, component }); return () => {}; } },
     layout: { panelInfo: { getSnapshot: () => ({ activePanelId: null }) }, selectPanel() {} },
   });
-  assert.equal(registrations.length, 24);
+  assert.equal(registrations.length, 22);
   assert.equal(registrations.filter(({meta})=>meta.name==='local.terminal.touch.keys').length,1);
   assert.equal(registrations.filter(({meta})=>meta.name==='main'&&meta.key==='pocket-kit.native-terminal').length,1);
   assert.ok(registrations.some(({ meta }) => meta.name === 'main' && meta.key === 'pocket-kit.home' && meta.children['local.pocket-kit.home.tool']));
   assert.deepEqual(registrations.filter(({meta})=>meta.name==='sidebar.footer.action').map(({meta})=>meta.id),['pocket-kit-home']);
-  assert.equal(registrations.filter(({meta})=>meta.name==='sidebar.panellist'&&meta.id==='pocket-kit.native-terminal').length,1);
+  assert.equal(registrations.filter(({meta})=>meta.name==='sidebar.panellist'&&meta.id==='pocket-kit.native-terminal').length,0);
   assert.ok(registrations.some(({ meta }) => meta.name === 'local.pocket-kit.home.tool' && meta.id === 'network-speed'));
   assert.ok(registrations.some(({ meta }) => meta.name === 'main' && meta.key === 'local.outing-checklist'));
-  assert.deepEqual(registrations.filter(({meta})=>meta.name==='local.pocket-kit.home.tool').map(({meta})=>meta.id).sort(),['local.outing-checklist','network-speed',...['file-manager','beijing-pass','health','terminal','bill-manager','music','xiaoai'].map(id=>'pocket-kit.'+id)].sort());
+  assert.deepEqual(registrations.filter(({meta})=>meta.name==='local.pocket-kit.home.tool').map(({meta})=>meta.id).sort(),['local.outing-checklist','network-speed',...['file-manager','beijing-pass','health','native-terminal','bill-manager','music','xiaoai'].map(id=>'pocket-kit.'+id)].sort());
+  assert.ok(!registrations.some(({meta})=>meta.key==='pocket-kit.terminal'||meta.id==='pocket-kit.terminal'));
+  assert.doesNotMatch(source,/createTerminalView|startFreshTerminal|runTerminalStartup|TERMINAL_STARTUP/);
   for (const dispose of disposals.reverse()) dispose();
 });
-test('package exports one client and ten independent host entries', async () => {
+test('package exports one client and nine independent host entries', async () => {
   const pkg = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
   assert.equal(pkg.name, '@local/pocket-kit');
-  for (const key of ['./client', './shortcuts', './network-speed', './outing-checklist', './music', './xiaoai', './file-manager', './health', './beijing-pass', './terminal', './bill-manager']) assert.ok(pkg.exports[key]);
+  for (const key of ['./client', './shortcuts', './network-speed', './outing-checklist', './music', './xiaoai', './file-manager', './health', './beijing-pass', './bill-manager']) assert.ok(pkg.exports[key]);
+  assert.ok(!pkg.exports['./terminal']);
+  assert.ok(!pkg.files.some(path=>path.startsWith('features/terminal/')));
   assert.ok(pkg.files.every(path => !path.includes('.local') && !path.includes('bookmarks.json')));
   const patch = await readFile(new URL('cordis.patch.yml', root), 'utf8');
-  assert.equal((patch.match(/- id:/g) || []).length, 11);
+  assert.equal((patch.match(/- id:/g) || []).length, 10);
 });
 test('mobile styles include touch sizing and constrained dialogs', async () => {
   for (const path of ['features/shortcuts/client.js', 'features/network-speed/client-entry.js', 'features/outing-checklist/client.js']) {
