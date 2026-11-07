@@ -3,10 +3,15 @@
 import { createRequire } from 'node:module';
 import { readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
 import assert from 'node:assert/strict';
-const require=createRequire(join(resolve(process.env.FILE_TEST_TOOLS||'/tmp/dsh-outing-browser-test'),'package.json'));
+const toolRoot=join(homedir(),'tools','pocket-kit-preview');
+const tools=process.env.FILE_TEST_TOOLS||(existsSync(join(toolRoot,'browser-tools','node_modules','playwright'))?join(toolRoot,'browser-tools'):'/tmp/dsh-outing-browser-test');
+if(!process.env.PLAYWRIGHT_BROWSERS_PATH&&existsSync(join(toolRoot,'browser','chromium_headless_shell-1254')))process.env.PLAYWRIGHT_BROWSERS_PATH=join(toolRoot,'browser');
+const require=createRequire(join(resolve(tools),'package.json'));
 const {chromium}=require('playwright'),{build}=require('esbuild');
-const bundle=await build({stdin:{contents:"import React from 'react';import {createRoot} from 'react-dom/client';window.React=React;window.createRoot=createRoot;",resolveDir:resolve(process.env.FILE_TEST_TOOLS||'/tmp/dsh-outing-browser-test')},bundle:true,write:false,format:'iife',define:{'process.env.NODE_ENV':'"production"'}});
+const bundle=await build({stdin:{contents:"import React from 'react';import {createRoot} from 'react-dom/client';window.React=React;window.createRoot=createRoot;",resolveDir:resolve(tools)},bundle:true,write:false,format:'iife',define:{'process.env.NODE_ENV':'"production"'}});
 const view=await readFile(new URL('./view.js',import.meta.url),'utf8');
 let source=await readFile(new URL('../utilities/client.js',import.meta.url),'utf8');
 source=source.replace('/* UTILITY_MESSAGES */','');

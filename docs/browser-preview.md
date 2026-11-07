@@ -8,10 +8,18 @@
 
 ## 现有环境（2026-11-07已验证）
 
-- Node工具：`/tmp/dsh-outing-browser-test/node_modules/playwright`，版本 **1.65.0**；这是现有临时工具目录，系统清理后可能不存在。不是根包生产依赖。
-- 实际浏览器二进制（`chromium.launch({headless:true})` 启动的就是它）：`/home/xuekai/.cache/ms-playwright/chromium_headless_shell-1254/chrome-headless-shell-linux64/chrome-headless-shell`，Chromium **158.0.8127.18**，已验证可启动。
-- 注意：`chromium.executablePath()` 返回的 `/home/xuekai/.cache/ms-playwright/chromium-1254/chrome-linux64/chrome`（完整Chrome）**当前不存在**，不能据此判断浏览器缺失，也不要改用该路径启动；无头模式走 headless shell。只安装了headless shell，因此不能改用 `headless:false` 或有头截图。
-- 浏览器构建号 1254 与 Playwright 1.65.0 配套；换版本需先确认构建匹配，不要混用。原CDN下载多次中断，后来由用户提供完整ZIP并解压安装；ZIP已不再需要，也不必重新下载。若缓存或工具目录被清理，先说明缺失情况，按上述版本补齐；使用独立工具目录，不改宿主安装、不因截图重装整个profile。
+持久工具根目录：**`~/tools/pocket-kit-preview/`**（2026-11-07从 `/tmp` 和 `~/.cache` 迁入）。`/tmp` 在开机时由 tmpfiles 清空；`~/.cache` 按约定可被随时清理，都不适合放需要长期复用的浏览器。`~/tools` 已存有 jdk/gradle，适合同类持久工具。
+
+| 内容 | 路径 | 大小 |
+| --- | --- | --- |
+| 实际浏览器二进制 | `~/tools/pocket-kit-preview/browser/chromium_headless_shell-1254/chrome-headless-shell-linux64/chrome-headless-shell` | 283M |
+| Playwright 1.65.0、React、esbuild | `~/tools/pocket-kit-preview/browser-tools/node_modules` | 39M |
+| happy-dom、React、react-dom | `~/tools/pocket-kit-preview/dom-tools/node_modules` | 32M |
+
+- 实际二进制即 `chromium.launch({headless:true})` 启动的 headless shell，Chromium **158.0.8127.18**，迁移后已验证可启动。
+- `scripts/preview-ui.mjs` 默认从这个持久目录加载 Playwright，并在未显式设置时自动把 `PLAYWRIGHT_BROWSERS_PATH` 指向 `browser/`；`browser-check.mjs` / `dom-check.mjs` 同样优先使用持久目录，找不到才回退旧 `/tmp` 路径。`POCKET_PREVIEW_ROOT`、`POCKET_BROWSER_TOOLS`、`FILE_TEST_TOOLS`、`FILE_DOM_TOOLS` 可覆盖。
+- `chromium.executablePath()` 仍会返回 `~/.cache/ms-playwright/chromium-1254/chrome-linux64/chrome`（完整Chrome，**不存在**），不能据此判断浏览器缺失，也不要改用该路径启动；只安装了headless shell，因此不能使用 `headless:false` 或有头截图。
+- 浏览器构建号 1254 与 Playwright 1.65.0 配套；换版本需先确认构建匹配，不要混用。原CDN下载多次中断，后来由用户提供完整ZIP解压安装，ZIP已删除。若工具目录丢失，先说明缺失情况再按上述版本补齐；使用独立工具目录，不改宿主安装、不因截图重装整个profile。
 
 ## 用法
 
@@ -41,3 +49,14 @@ Agent的每次bash调用是独立shell，不能假定前一次 `export` 会延�
 - 浏览器模拟不证明真实Safari、软键盘、安全区、系统大字体或真实设备交互已验收。正式数据只做浏览，写入、删除与其他真实业务另需用户明确授权；交互回归优先使用隔离fixture。
 
 初次整理时已用此脚本的390px移动模式在原GUI完成首页与文件页截图、无溢出/无pageerror检查；完整宽度及明暗实页结果见首页与文件功能文档。没有为本项目新增独立skill；将来若多个项目复用，再把通用浏览器操作提炼为skill，本页保留项目地址与约束即可。
+
+## 迁移或恢复
+
+迁移只需保持目录层级（`browser/chromium_headless_shell-1254/...` 与各工具目录的 `node_modules/`），脚本会自动发现；换机器时把整个 `~/tools/pocket-kit-preview/` 复制过去即可，不建议重新走CDN下载。迁移后先验证：
+
+```bash
+node --check scripts/preview-ui.mjs
+POCKET_PREVIEW_TOKEN=... node scripts/preview-ui.mjs   # 查看打印的首页/文件页尺寸与pageErrors
+```
+
+仅当目录确实缺失或版本不匹配时才补齐依赖；补齐后同样用上述命令验证，不以“安装成功”代替真实启动。

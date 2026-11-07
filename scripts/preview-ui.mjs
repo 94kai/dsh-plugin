@@ -1,30 +1,42 @@
 // Read-only real-GUI screenshots. No persisted credentials or replacement server.
 import {createRequire} from 'node:module';
 import {mkdtemp} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
+import {existsSync} from 'node:fs';
+import {homedir,tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 
+// Persistent tool root. /tmp is wiped at boot and ~/.cache is disposable.
+const TOOL_ROOT=process.env.POCKET_PREVIEW_ROOT||join(homedir(),'tools','pocket-kit-preview');
 const help=`工具箱实页截图（只浏览，不修改业务数据）
   node scripts/preview-ui.mjs          # 手机390px：首页、文件页
   node scripts/preview-ui.mjs --all    # 桌面、320/375/390/430px手机、390px暗色
 环境变量：
   POCKET_PREVIEW_TOKEN                用户临时授权的登录token（必填，不写入文件）
-  POCKET_BROWSER_TOOLS                包含node_modules/playwright的目录（可选）
+  POCKET_BROWSER_TOOLS                包含node_modules/playwright的目录（默认持久工具目录）
+  POCKET_PREVIEW_ROOT                 持久工具根目录（默认~/tools/pocket-kit-preview）
 默认预览地址：https://dsh.xuekai.top:8888/
 默认截图位置：系统临时目录下独立的pocket-kit-preview-*目录
 `;
 
 function loadPlaywright(){
-  const locations=process.env.POCKET_BROWSER_TOOLS?[resolve(process.env.POCKET_BROWSER_TOOLS)]:[resolve('.'),'/tmp/dsh-outing-browser-test'];
+  const locations=process.env.POCKET_BROWSER_TOOLS?[resolve(process.env.POCKET_BROWSER_TOOLS)]:[join(TOOL_ROOT,'browser-tools'),resolve('.'),'/tmp/dsh-outing-browser-test'];
   for(const location of locations){
     try{return createRequire(join(location,'package.json'))('playwright');}catch(error){if(error.code!=='MODULE_NOT_FOUND')throw error;}
   }
   throw Error('找不到Playwright。请先阅读docs/browser-preview.md；不要重复下载已存在的浏览器。');
 }
 
+// Playwright resolves browsers from PLAYWRIGHT_BROWSERS_PATH. Point it at the
+// persistent copy unless the caller supplied an explicit value.
+function usePersistentBrowsers(){
+  const browsers=join(TOOL_ROOT,'browser');
+  if(!process.env.PLAYWRIGHT_BROWSERS_PATH&&existsSync(join(browsers,'chromium_headless_shell-1254')))process.env.PLAYWRIGHT_BROWSERS_PATH=browsers;
+}
+
 async function main(){
   const token=process.env.POCKET_PREVIEW_TOKEN;
   if(!token)throw Error('缺少POCKET_PREVIEW_TOKEN。请向用户取得临时登录授权；不要把凭据写入代码。');
+  usePersistentBrowsers();
   const {chromium,devices}=loadPlaywright();
   const phone={...devices['iPhone 13'],locale:'zh-CN'};
   const profiles=process.argv.includes('--all')?[
