@@ -3,6 +3,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
+    /* KIT_CHROME */
     const PANEL = 'pocket-kit.home';
     const NS = 'pocket-kit-home';
     /* HOME_STARTUP */
@@ -44,7 +45,7 @@ window.__ModuleLoader__.load({
       const tools={music:['音乐','搜索、下载喜欢的音乐','#e58c4b'],xiaoai:['小爱音箱','音乐与音箱，一起管理','#629a7c'],'outing-checklist':['出门清单','出发前，把重要的带齐','#c49641'],'file-manager':['文件','浏览、整理与传输文件','#6588d8'],'network-speed':['连接测速','看看当前连接有多快','#599fae'],'beijing-pass':['进京证','证件状态与办理提醒','#9c7ccc'],health:['健康','记录家人的健康点滴','#d17b83'],terminal:['终端','打开原生终端工作区','#7f8798'],'bill-manager':['记账单','把每一笔收支理清楚','#ae9070']};
       const renderCard=({id,title,description,icon,onClick})=>{const info=tools[id];if(info)[title,description]=info;return h('button',{type:'button',className:'pk-home-tool','data-tool':id,style:{'--tool-color':info?.[2]||'#7160df'},onClick,'aria-label':title+'，'+description,title:description},h('span',{className:'pk-home-tool-icon'},icon),h('span',{className:'pk-home-tool-heading'},title),h('span',{className:'pk-home-tool-description'},description),h('span',{className:'pk-home-arrow','aria-hidden':true},'›'));};
       return h('section',{className:'pk-home','aria-label':t('title')},h('style',null,css),h('div',{className:'pk-home-inner'},
-        h('header',{className:'pk-home-header'},h('div',{className:'pk-home-title'},h('span',{className:'pk-home-mark'},h(HomeIcon,{size:25})),h('div',null,h('h1',null,t('title')),h('p',null,t('subtitle')))),h('button',{type:'button',className:'pk-home-button',onClick:chat},t('chat'))),
+        h('header',{className:'pk-home-header'},h('div',{className:'pk-home-title'},h('span',{className:'pk-home-mark'},h(HomeIcon,{size:25})),h('div',null,h('h1',null,t('title')),h('p',null,t('subtitle')))),h(KitNavActions,{chat,primary:'chat',compact:true})),
         h('section',{className:'pk-home-section','aria-label':t('tools')},h('div',{className:'pk-home-section-head'},h('h2',null,t('tools'))),h('div',{className:'pk-home-tools'},renderSlot('local.pocket-kit.home.tool',{renderCard}))),
         h('section',{className:'pk-home-section','aria-label':t('links')},h('div',{className:'pk-home-section-head'},h('h2',null,t('links')),h('div',{className:'pk-home-actions'},h('button',{type:'button',className:'pk-home-button',onClick:links.reload,disabled:links.loading},t('refresh')),h('button',{type:'button',className:'pk-home-button',onClick:()=>open('shortcuts')},t('details')))),
           links.loading?h('div',{className:'pk-home-status',role:'status'},t('loading')):links.error?h('div',{className:'pk-home-status',role:'alert'},h('p',null,t('error')),h('button',{type:'button',className:'pk-home-button',onClick:links.reload},t('retry'))):!links.items.length?h('div',{className:'pk-home-status'},t('empty')):h('div',{className:'pk-home-links'},links.items.map(item=>h('a',{key:item.id,className:'pk-home-link',href:item.url,target:'_blank',rel:'noopener noreferrer',title:item.title+' · '+t('newTab')},h('span',{className:'pk-home-link-icon'},h(BookmarkIcon,{item})),h('span',{className:'pk-home-link-text'},h('strong',null,item.title),item.description&&h('small',null,item.description)),h('span',{className:'pk-home-arrow','aria-hidden':true},'↗'))))
@@ -57,12 +58,13 @@ window.__ModuleLoader__.load({
     }
     return {inject:['slots','layout','locale'],apply(ctx){
       ctx.effect(()=>ctx.locale.register(NS,{zh:dictionaries.zh,en:dictionaries.zh}));
+      ctx.effect(()=>kitTrackLastPanel(ctx));
       ctx.slots.inject('main',()=>{
         const dispose=ctx.slots.register({name:'main',key:PANEL,locale:NS,children:{'local.pocket-kit.home.tool':{kind:'list',scope:'root'}}},props=>h(Page,{...props,open:id=>ctx.layout.selectPanel(id),chat:()=>ctx.layout.selectPanel(null)}));
         const stopStartup=mountHomeStartup(ctx,PANEL);
         return()=>{stopStartup?.();dispose();};
       });
-      ctx.slots.inject('sidebar.footer.action',()=>ctx.slots.register({name:'sidebar.footer.action',id:'pocket-kit-home',order:10,locale:NS},props=>h(Footer,{...props,open:()=>ctx.layout.selectPanel(PANEL)})));
+      ctx.slots.inject('sidebar.footer.action',()=>ctx.slots.register({name:'sidebar.footer.action',id:'pocket-kit-home',order:10,locale:NS},props=>h(Footer,{...props,open:()=>kitOpenLast(ctx)})));
       ctx.effect(()=>()=>{if(ctx.layout.panelInfo.getSnapshot().activePanelId===PANEL)ctx.layout.selectPanel(null);});
     }};
   }

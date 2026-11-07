@@ -32,15 +32,21 @@
 
 根包清单已提供上述导出与统一脚本。构建读取四个功能工厂（media 工厂显式内联 music/xiaoai 两个独立视图），合并为唯一运行时模块 `@local/pocket-kit`；功能源码保留旧 wrapper 便于测试，不表示运行时还分别注册旧客户端。测速 measurement 由根构建内联，无需子构建。安装步骤与回滚留存见[迁移记录](migration.md)，后续操作遵循[开发流程](development.md)。避免旧、新 Host 同时注册相同 API。
 
-构建、40 项测试及打包检查结果已记录在[迁移记录](migration.md)；客户端刷新、真机布局与交互仍有验证限制，不以 Host 激活替代浏览器验收。
+构建、137 项测试及打包检查结果已记录在[迁移记录](migration.md)；客户端刷新、真机布局与交互仍有验证限制，不以 Host 激活替代浏览器验收。
+
+## 共享页面装配与导航
+
+- `features/shared/chrome.js` 在构建时内联到 home、media、utilities、shortcuts、outing-checklist 和终端客户端工厂，统一「返回会话 / 返回首页」按钮样式与上次页面记忆，避免各页面各写一套。
+- 上次页面只把 `pocket-kit.last-panel.v1` 写入浏览器 localStorage，值是稳定主面板 id；不保存业务数据。目标面板不存在时回退 `pocket-kit.home`，原生终端入口不参与记忆。
+- 页面装配仍只负责导航，不读取业务模块内部状态。音乐信息编辑弹窗属于 media 视图，遮罩和滚动只作用于当前页面。
 
 ## 音乐与小爱迁移边界
 
-- `features/media/client.js` 只提供共享手机页面壳、请求/状态控件和两个 tab 的注册；业务界面在各自 `view.js`。音乐和小爱仍各有独立后端。
+- `features/media/client.js` 只提供共享手机页面壳、请求/状态控件和两个独立面板的注册；音乐、小爱各自只渲染自己的 `view.js`，页面内不再互相切换。音乐和小爱仍各有独立后端。
 - `lib/module-host.mjs` 的 FeatureService 是 UI 和 Agent 工具共用的操作入口；`lib/http-adapter.mjs` 把原 Node HTTP 业务处理器接到 DSH Fetch，不另开管理服务器。
 - 实际管理路由为 `POST /api/pocket-kit/music` 和 `POST /api/pocket-kit/xiaoai`，输入 `{module,path,method,body}`，path 是功能内短路径。外层只允许带 `X-Pocket-Kit: 1` 的同源 JSON；内层支持旧 GET/POST/PUT/DELETE 语义。
-- 音乐 module 为 `music`；小爱为 `playback`（默认）和 `assistant`。浏览器音频单独走已认证的 `GET /api/pocket-kit/music/audio?file=...`，支持 Range，不把整个音频缓存在内存。
-- 主面板/侧栏 key：`pocket-kit.music`、`pocket-kit.xiaoai`，页面顶部相互切换。
+- 音乐 module 为 `music`；小爱为 `playback`（默认）和 `assistant`。浏览器音频单独走已认证的 `GET /api/pocket-kit/music/audio?file=...`，支持 Range，不把整个音频缓存在内存。该 GET 路由必须用 `requestBody:'buffered'`；声明为 `streaming` 会让 Fetch 桥接层构造带 body 的 GET Request 并返回空 400。
+- 主面板/侧栏 key：`pocket-kit.music`、`pocket-kit.xiaoai`；各有独立入口，页面内不互相切换。
 - Agent 的 `pocket_music` / `pocket_xiaoai` 先 help 发现具体操作，再 request；与 UI 共用业务方法。登录授权与下载器安装不开放给 Agent 工具。真实设备控制必须符合用户明确请求。
 - 查询请求取消会中止音乐搜索/刮削/标签读取的网络或子进程；已接收的下载任务归 Host，页面关闭不撤销入队。卸载会中止本实例任务并清理。
 - 小爱 worker 是业务必须的设备协议桥，不是替代 DSH GUI 的服务器；默认不开启，显式启动也不连接或接管其他进程的旧 worker。详细数据与验证见[迁移记录](music-xiaoai-migration.md)。

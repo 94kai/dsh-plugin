@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
-const source = await readFile(new URL('./client.js', import.meta.url), 'utf8');
+const chrome = await readFile(new URL('../shared/chrome.js', import.meta.url), 'utf8');
+const source = (await readFile(new URL('./client.js', import.meta.url), 'utf8')).replace('/* KIT_CHROME */', () => chrome);
 function setup() {
   let module;
   const React = { createElement: (type, props) => ({ type, props }) };
@@ -34,8 +35,11 @@ test('client registers paired homepage launcher and main panel through scoped in
   assert.equal(sidebar.meta.label(), '出门清单');
   assert.equal(sidebar.meta.order, 30);
   assert.equal(typeof sidebar.component, 'function');
-  main.component().props.back();
+  main.component().props.home();
   assert.deepEqual(navigations, ['pocket-kit.home']);
+  navigations.length = 0;
+  main.component().props.chat();
+  assert.deepEqual(navigations, [null]);
   navigations.length = 0;
   disposals.at(-1)();
   assert.deepEqual(navigations, [null]);

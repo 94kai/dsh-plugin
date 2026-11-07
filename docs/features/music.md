@@ -2,7 +2,7 @@
 
 ## 范围与入口
 
-入口为侧栏「音乐」和媒体页面顶部音乐 tab（面板 key `pocket-kit.music`）。业务后端源于原 allinone 的独立 music-download 模块，保留聚合搜索、网易会员/声音、异步下载、下载库试听、重命名、删除、批量移动、元信息/歌词编辑和封面刮削。这里不接管小爱播放、外部曲库数据库或其他模块内部状态。
+入口为侧栏「音乐」和工具箱首页卡片（面板 key `pocket-kit.music`）。该页只做音乐搜索、下载与下载库管理，不再包含小爱音箱入口或互切 tab；小爱有独立入口。业务后端源于原 allinone 的独立 music-download 模块，保留聚合搜索、网易会员/声音、异步下载、下载库试听、重命名、删除、批量移动、元信息/歌词编辑和封面刮削。这里不接管小爱播放、外部曲库数据库或其他模块内部状态。
 
 前端 Slot、DSH Host 注册及 Fetch 适配由工具箱装配层负责；业务类保留 `MusicDownloadModule` 与 `handle(req,res,url)` Node HTTP 兼容接口。不要从前端 import 后端、私密配置或第三方凭据。
 
@@ -18,7 +18,7 @@
 
 ## 完整能力与 API
 
-业务兼容前缀 `/api/modules/music-download`。实际 DSH 接入为 `POST /api/pocket-kit/music`，输入 `{module:'music',path,method,body}`；path 是表中短路径，method 承载原 GET/POST/PUT/DELETE，外层校验同源 JSON 和 `X-Pocket-Kit: 1`。音频独立使用已认证的 `GET /api/pocket-kit/music/audio?file=...`。Agent 工具 `pocket_music` 与 UI 共用 FeatureService，但登录授权和工具安装仅在 UI 操作。
+业务兼容前缀 `/api/modules/music-download`。实际 DSH 接入为 `POST /api/pocket-kit/music`，输入 `{module:'music',path,method,body}`；path 是表中短路径，method 承载原 GET/POST/PUT/DELETE，外层校验同源 JSON 和 `X-Pocket-Kit: 1`。音频独立使用已认证的 `GET /api/pocket-kit/music/audio?file=...`，DSH 路由必须用 `requestBody:'buffered'`；把音频 GET 声明为 `streaming` 会触发“GET Request 不能带 body”，DSH 返回空 400。Agent 工具 `pocket_music` 与 UI 共用 FeatureService，但登录授权和工具安装仅在 UI 操作。
 
 | 路径 | 方法 | 输入与结果 |
 | --- | --- | --- |
@@ -33,7 +33,7 @@
 | `/downloads` | POST | 搜索条目 → 202 `{job}`；可下载与暂不可下载结果均可尝试 |
 | `/downloads` | DELETE | `file` → `{deleted}`；永久删除，UI 必须确认 |
 | `/downloads/rename` | POST | `{filename,name}`，name 不含扩展名 → `{filename,warning}` |
-| `/audio` | GET | `file`，HTTP Range 试听，200/206；无效范围 416 |
+| `/audio` | GET | `file`，可选 `download=1`；HTTP Range 试听 200/206，`download=1` 返回 `Content-Disposition: attachment`；无效范围 416；路由请求体必须为 buffered |
 | `/directories` | GET | `root,path` → `{root:{id,label},path,parent,directories}` |
 | `/move` | POST | `{files,root,path}` → `{moved:[{name,destination}]}`；1–200 个文件 |
 | `/metadata` | GET | `file` → `{metadata}`：标题/歌手/专辑/年份/流派/轨号/歌词、格式/时长/码率/采样率、封面状态 |
@@ -75,6 +75,31 @@ UI 应支持 320/375/390/430px、44px 触控、长歌名换行、音质选择、
 2026-11-07 执行 `node --check features/music/backend.mjs`、`node --check features/music/network.mjs`、`node --test features/music/*.test.js`：**19 项离线测试通过**。请求取消回归额外覆盖搜索锁释放、元数据子进程中止、刮削取消，以及已接收下载任务不继承入队请求的取消信号。覆盖公网地址政策、混合 DNS、显式安装去重、损坏文件保护、密文权限与错误密钥、URL 平台限制、路径穿越/符号链接、移动逃逸、改名冲突、模拟下载落盘、卸载、队列上限、HTTP 返回、真实临时文件 Range 流、模拟 ffprobe 元数据及 Cookie 验证失败保留旧状态。
 
 所有测试使用临时夹具与 fake fetch/exec，没有真实下载、远程调用、二进制安装执行或读写正式数据；不代表第三方接口、真实音质、FFmpeg 重封装、DSH 安装和真机 UI 已验收。原文档曾写“无歌词刮削”，已过期，以当前代码能力为准。
+
+## 2026-11-07 移除音乐页内嵌小爱入口
+
+音乐和小爱仍共用手机装配壳，但两个主面板不再互相切换：音乐面板只渲染 `MusicView`（搜索下载/已下载/设置与登录），小爱面板只渲染 `XiaoaiView`。后端 API、面板 key（`pocket-kit.music`、`pocket-kit.xiaoai`）、Host 条目和数据布局不变；音乐页仍只负责下载与下载库管理，不含小爱播放、设备或音箱控制。
+
+验证：`npm run verify` **135 项通过**，其中新增 `tests/media.test.js` 2 项，从构建产物核验音乐面板无小爱切换、小爱面板无音乐切换。Playwright `--all --music` 复跑桌面与 320/375/390/430px、暗色：均无横向溢出和 pageerror，音乐页无「小爱音箱」按钮。暗色下选中 tab 白底白字一并改为 `--dsw-alias-bg-base` 对比色并重新截图确认。实页截图为系统临时目录，未做真实设备、软键盘或真实下载操作验收。
+
+## 2026-11-07 试听/下载修复、信息弹窗与页面导航
+
+- **试听/下载根因**：音频 GET 路由原声明为 `requestBody:'streaming'`，DSH 桥接层会构造带 body 的 GET Request 并抛错，返回空 400；反向代理再把该 400 显示为错误页。改为 `requestBody:'buffered'` 后，Range 试听与下载恢复正常。
+- **本机下载**：链接增加 `download=1`，后端返回 `Content-Disposition: attachment`；实页下载得到完整 28,988,615 字节 FLAC，`download.failure()` 为 null。
+- **试听**：实页点击试听后 `readyState=4`、时长 267 秒、无 media error、正常播放。
+- **信息弹窗**：编辑音乐信息改为 `position:fixed` 遮罩 + 卡片弹窗，标题栏固定、内容区滚动，支持 Escape、点击遮罩和关闭按钮关闭；320/390px 均无横向溢出。
+- **页面导航**：音乐页增加「返回会话 / 返回首页」；已下载行操作改为五项等宽、单行 44px 触控区，下载链接文案简化为「下载」并保留完整 aria-label/title。
+- **上次页面**：工具箱底部入口回到上次正常工具页；只把面板 id 写入 localStorage（`pocket-kit.last-panel.v1`），原生终端页不参与，避免误开终端。共享实现见 `features/shared/chrome.js`。
+- 验证：`npm run verify` **137 项通过**；新增音频路由请求体回归和上次页面记忆回归。Playwright 实页 390px 与暗色、320/375/430px 均已复跑，无 pageerror 和横向溢出；真实设备、软键盘和真实系统下载目录未验收。
+
+## 2026-11-07 移动与匹配交互优化
+
+- **移动目标目录归入「已下载」**：「目标目录」入口和移动动作从「设置与登录」移到已下载工具栏；勾选歌曲后，顶部出现已选数量和「移动已选 / 取消选择」，不再在列表末尾追加一整块移动面板。
+- **移动流程改为弹窗**：`MoveDialog` 提供目标根目录、当前位置、上一级、子目录按钮和可新建的子目录输入；底部固定「取消 / 移动到此目录」。`MoveTargets` 单独管理目标根目录，保存后刷新状态；移动成功后清空选择并刷新列表。目录为空时给出「管理目标目录」入口。
+- **匹配结果改为独立视图**：点击「搜索匹配」后不再把候选追加在长表单末尾，而是进入「选择匹配结果」子视图；标题栏和底栏都有「返回编辑」，可随时返回。候选卡片展示歌手、专辑、来源、时长和歌词提示，歌词可展开预览。
+- **候选可反复比较**：使用某个匹配后回到编辑视图，候选列表保留，显示「已应用匹配，保存后才会写入文件」和「查看候选（N）/ 查看候选」；再次进入可换另一个候选，不会因为点过一个就丢失列表。
+- **固定操作栏**：编辑/匹配/移动/目标目录四个弹窗使用固定的标题栏和底部操作栏，长表单只在中间内容区滚动；移动端底栏两列布局，主操作占满一行。保存成功后清空已消费的候选和 scrapeToken，避免重复使用失效 token。
+- **验证**：`npm run verify` 137 项通过。Playwright 390px 与 320px 实页走通：勾选→顶部选择栏→移动弹窗（只打开/取消，未真实移动）、目标目录弹窗（只打开/关闭，未保存）、信息→搜索匹配→8 个候选→应用→返回编辑→查看候选→再选另一个→关闭；无 pageerror。未执行真实移动、目录配置保存或元信息保存。
 
 ## 1.3.0 导航文案
 

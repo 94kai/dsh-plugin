@@ -46,3 +46,21 @@ test('UI route and agent tool call the same application service',async()=>{
  assert.equal((await tools[0].execute({action:'request',path:'/netease/session'},{signal:new AbortController().signal})).status,403);
  await effects[0]();
 });
+test('music registers a buffered GET audio route', async () => {
+  const routes = [], effects = [];
+  const ctx = {
+    effect(fn) { const dispose = fn(); if (dispose) effects.push(dispose); },
+    connection: { fetch: { register(route) { routes.push(route); return () => {}; } } },
+    get: () => null,
+  };
+  mountFeature(ctx, {
+    name: 'music',
+    factory: async () => ({ music: { async handle(_req, res) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{}'); return true; }, dispose() {} } }),
+    prefixes: { music: '/api/modules/music-download' },
+    help: { routes: [] },
+  });
+  const audio = routes.filter(route => route.methods.includes('GET'));
+  assert.deepEqual(audio.map(route => route.path), ['/api/pocket-kit/music/audio']);
+  assert.ok(audio.every(route => route.requestBody === 'buffered'));
+  await effects[0]();
+});

@@ -3,6 +3,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
+    /* KIT_CHROME */
     const NS = 'shortcut-links';
     const dictionaries = {
       en: { toolkit: 'Pocket Kit', heading: 'Quick links', details: 'Details and notes', newTab: 'Opens in a new tab', back: 'Back to toolbox', description: 'Your saved websites, descriptions and notes.', loading: 'Loading…', error: 'Could not load links. Please try again.', retry: 'Retry', open: 'Open website ↗', copyUrl: 'Copy URL', copyNotes: 'Copy notes', copied: 'Copied', copyError: 'Copy failed. Please select the text and copy manually.', notes: 'Notes', noNotes: 'No notes', count: ' saved links' },
@@ -59,7 +60,7 @@ window.__ModuleLoader__.load({
     function Icon({ item }) {
       return item.iconDataUrl ? h('img', { src: item.iconDataUrl, alt: '' }) : h('span', null, item.title.slice(0, 1));
     }
-    function Page({ t, back }) {
+    function Page({ t, chat, home }) {
       const state = useBookmarks();
       const [status, setStatus] = React.useState('');
       const active = React.useRef(true);
@@ -71,7 +72,7 @@ window.__ModuleLoader__.load({
       return h('section', { className: 'shortcuts-links-page', 'aria-label': t('heading') }, h('style', null, css),
         h('div', { className: 'shortcuts-links-page-inner' },
           h('header', null, h('h1', null, t('heading')),
-            h('button', { className: 'shortcuts-links-button', onClick: back }, t('back'))),
+            h(KitNavActions, { chat, home })),
           h('p', { className: 'shortcuts-links-muted' }, t('description')),
           h('div', { role: 'status', 'aria-live': 'polite' }, status),
           state.loading ? h('p', null, t('loading')) : null,
@@ -95,7 +96,7 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         ctx.effect(() => ctx.locale.register(NS, dictionaries));
         ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'shortcuts', locale: NS },
-          props => h(Page, { ...props, back: () => ctx.layout.selectPanel('pocket-kit.home') })));
+          props => h(Page, { ...props, chat: () => ctx.layout.selectPanel(null), home: () => ctx.layout.selectPanel('pocket-kit.home') })));
 
       },
     };

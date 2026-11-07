@@ -881,13 +881,14 @@ export class MusicDownloadModule {
     return { root: { id: root.id, label: root.label }, path: current, parent: current ? current.split('/').slice(0, -1).join('/') : null, directories };
   }
 
-  async streamAudio(req, res, filenameInput) {
+  async streamAudio(req, res, filenameInput, download = false) {
     const { filename, target } = await this.resolveDownloadedFile(filenameInput);
     const info = await stat(target).catch(() => null);
     if (!info?.isFile()) throw httpError('下载文件不存在', 404);
     const mime = audioMimeTypes[path.extname(filename).toLowerCase()] || 'application/octet-stream';
     const range = String(req.headers.range || '');
-    const headers = { 'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Cache-Control': 'private, max-age=60', 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(filename)}` };
+    const disposition = download ? 'attachment' : 'inline';
+    const headers = { 'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Cache-Control': 'private, max-age=60', 'Content-Disposition': `${disposition}; filename*=UTF-8''${encodeURIComponent(filename)}` };
     if (!range) {
       res.writeHead(200, { ...headers, 'Content-Length': info.size });
       const stream = createReadStream(target, { signal:this.controller.signal });
@@ -983,7 +984,7 @@ export class MusicDownloadModule {
     if (url.pathname === `${apiPrefix}/downloads` && req.method === 'POST') return json(res, 202, { job: this.createDownload(await readJson(req)) }), true;
     if (url.pathname === `${apiPrefix}/downloads/rename` && req.method === 'POST') return json(res, 200, await this.renameDownloadedFile(await readJson(req))), true;
     if (url.pathname === `${apiPrefix}/downloads` && req.method === 'DELETE') return json(res, 200, { deleted: await this.deleteDownloadedFile(url.searchParams.get('file')) }), true;
-    if (url.pathname === `${apiPrefix}/audio` && req.method === 'GET') { await this.streamAudio(req, res, url.searchParams.get('file')); return true; }
+    if (url.pathname === `${apiPrefix}/audio` && req.method === 'GET') { await this.streamAudio(req, res, url.searchParams.get('file'), url.searchParams.get('download') === '1'); return true; }
     if (url.pathname === `${apiPrefix}/move` && req.method === 'POST') return json(res, 200, { moved: await this.moveFiles(await readJson(req)) }), true;
     if (url.pathname === `${apiPrefix}/directories` && req.method === 'GET') return json(res, 200, await this.browseMoveDirectories(url.searchParams.get('root'), url.searchParams.get('path'))), true;
     if (url.pathname === `${apiPrefix}/metadata` && req.method === 'GET') return json(res, 200, { metadata: await this.readMetadata(url.searchParams.get('file')) }), true;

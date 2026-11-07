@@ -2,6 +2,7 @@ window.__ModuleLoader__.load({
   id:'@local/pocket-kit-utilities',
   factory(require){
     const React=require('react'),h=React.createElement;
+    /* KIT_CHROME */
     /* HEALTH_VIEW */
     /* FILE_MANAGER_VIEW */
     /* BEIJING_PASS_VIEW */
@@ -38,13 +39,13 @@ window.__ModuleLoader__.load({
     const shared={t:(...args)=>translate(...args),h,useApi,useTask,button,field,select,check,card,empty,Status,downloadLink,saveBlob};
     const views={'health':createHealthView(React,shared),'file-manager':createFileManagerView(React,shared),'beijing-pass':createBeijingPassView(React,shared),'bill-manager':createBillManagerView(React,shared)};
     function Icon({path}){return h('svg',{width:21,height:21,viewBox:'0 0 24 24',fill:'none',stroke:'currentColor',strokeWidth:1.65,strokeLinecap:'round',strokeLinejoin:'round','aria-hidden':true},h('path',{d:path}));}
-    function Page({entry,back}){const [id,title,description]=entry,t=translate;return h('section',{className:'pk-util'+(id==='file-manager'?' pk-files-page':''),'aria-label':t(id)},h('style',null,css),h('div',{className:'pk-u-inner'},h('header',{className:'pk-u-head'},h('div',null,h('h1',null,t(id)),h('p',{className:'pk-u-sub'},t(id+'-description'))),button(t('back'),back)),h(views[id])));}
+    function Page({entry,chat,home}){const [id,title,description]=entry,t=translate;return h('section',{className:'pk-util'+(id==='file-manager'?' pk-files-page':''),'aria-label':t(id)},h('style',null,css),h('div',{className:'pk-u-inner'},h('header',{className:'pk-u-head'},h('div',null,h('h1',null,t(id)),h('p',{className:'pk-u-sub'},t(id+'-description'))),h(KitNavActions,{chat,home})),h(views[id])));}
     return {inject:['slots','layout','locale'],apply(ctx){
       const zh={...messages,...Object.fromEntries(entries.flatMap(([id,title,description])=>[[id,title],[id+'-description',description]]))};zh.back='返回工具箱';
       translate=value=>zh[value]??value;
       ctx.effect(()=>ctx.locale.register(NS,{zh,en:{...zh,'刷新':'Refresh','取消':'Cancel','删除':'Delete','编辑':'Edit','保存记录':'Save record','新增记录':'Add record','添加':'Add','打开':'Open','根目录':'Root folder','导出 Excel':'Export Excel','上一页':'Previous','下一页':'Next','姓名':'Name','目录设置':'Folder settings','刷新会话':'Refresh sessions','打开会话':'Open session','发送并回车':'Send and enter','暂停刷新':'Pause refresh','继续刷新':'Resume refresh',back:'Back to toolbox','file-manager':'Files',health:'Health',terminal:'Terminal','beijing-pass':'Beijing entry permit','bill-manager':'Bills'}}));
       for(const entry of entries){const [id,title,description,path,order]=entry,panel='pocket-kit.'+id;
-        ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:panel,locale:NS},props=>h(Page,{...props,entry,back:()=>ctx.layout.selectPanel('pocket-kit.home')})));
+        ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:panel,locale:NS},props=>h(Page,{...props,entry,chat:()=>ctx.layout.selectPanel(null),home:()=>ctx.layout.selectPanel('pocket-kit.home')})));
         ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:panel,order,locale:NS},({renderCard,t})=>renderCard({id,title:t(id),description:t(id+'-description'),icon:h(Icon,{path}),onClick:()=>ctx.layout.selectPanel(panel)})));
       }
       ctx.effect(()=>()=>{if(entries.some(([id])=>'pocket-kit.'+id===ctx.layout.panelInfo.getSnapshot().activePanelId))ctx.layout.selectPanel(null);});

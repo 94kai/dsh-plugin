@@ -3,6 +3,7 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
+    /* KIT_CHROME */
     const PANEL = 'local.outing-checklist';
     const PEOPLE = ['通用', '爸爸', '妈妈', '赞赞'];
     const css = `
@@ -46,7 +47,7 @@ window.__ModuleLoader__.load({
           error?h('p',{role:'alert',className:'oc-danger'},error):null,
           h('div',{className:'oc-dialog-actions'},h('button',{type:'button',className:'oc-btn',disabled:busy,onClick:onClose},'取消'),h('button',{type:'submit',className:'oc-btn oc-primary',disabled:busy || (edit&&!text.trim())},busy?'保存中…':edit?'保存修改':mode.type==='delete'?'确认移除':'重置准备状态'))));
     }
-    function Page({ back }) {
+    function Page({ chat, home }) {
       const [data,setData]=React.useState(null), [error,setError]=React.useState(''), [busy,setBusy]=React.useState(false);
       const [person,setPerson]=React.useState('全部'), [pendingOnly,setPendingOnly]=React.useState(false), [sort,setSort]=React.useState('custom');
       const [text,setText]=React.useState(''), [addPerson,setAddPerson]=React.useState('通用'), [mode,setMode]=React.useState(null), [notice,setNotice]=React.useState('');
@@ -71,7 +72,7 @@ window.__ModuleLoader__.load({
       if(sort==='pending')shown.sort((a,b)=>Number(a.checked)-Number(b.checked));
       function choosePerson(p){setPerson(p);setAddPerson(p==='全部'?'通用':p);}
       return h('section',{className:'oc-page','aria-label':'出门清单'},h('style',null,css),h('div',{className:'oc-wrap'},
-        h('header',{className:'oc-top'},h('div',null,h('div',{className:'oc-eyebrow'},'READY TO GO'),h('h1',{className:'oc-title'},'出门清单'),h('div',{className:'oc-muted'},'少一点惦记，从容一点出发。')),h('button',{className:'oc-btn',onClick:back},'← 返回工具箱')),
+        h('header',{className:'oc-top'},h('div',null,h('div',{className:'oc-eyebrow'},'READY TO GO'),h('h1',{className:'oc-title'},'出门清单'),h('div',{className:'oc-muted'},'少一点惦记，从容一点出发。')),h(KitNavActions,{chat,home})),
         h('div',{className:'oc-hero'},h('div',null,h('h2',null,!data?'正在读取清单…':!items.length?'下一次出发，从这里准备':done===items.length?'都准备好了，安心出发！':`还有 ${items.length-done} 件，慢慢准备`),h('div',{className:'oc-muted'},items.length?`全部成员 · 已准备 ${done} / ${items.length} 件`:'把出门要带的东西记下来，下次也能继续用。')),h('div',{className:'oc-ring',style:{'--progress':`${percent}%`},role:'progressbar','aria-label':'全部物品准备进度','aria-valuenow':percent,'aria-valuemin':0,'aria-valuemax':100},h('div',{className:'oc-ring-inner'},h('strong',null,`${percent}%`),h('small',null,'准备完成')))),
         error?h('div',{className:'oc-alert',role:'alert'},h('span',null,error),h('button',{className:'oc-btn',disabled:busy,onClick:()=>load()},'重新加载')):null,
         h('nav',{className:'oc-persons','aria-label':'按成员筛选'},['全部',...PEOPLE].map(p=>h('button',{key:p,className:'oc-person','aria-pressed':person===p,onClick:()=>choosePerson(p)},p,h('small',null,items.filter(i=>p==='全部'||i.person===p).length)))),
@@ -85,7 +86,7 @@ window.__ModuleLoader__.load({
     }
     return { inject:['slots','locale','layout'], apply(ctx) {
       ctx.effect(()=>ctx.locale.register(PANEL,{zh:{title:'出门清单'},en:{title:'Outing checklist'}}));
-      ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:PANEL,locale:PANEL},()=>h(Page,{back:()=>ctx.layout.selectPanel('pocket-kit.home')})));
+      ctx.slots.inject('main',()=>ctx.slots.register({name:'main',key:PANEL,locale:PANEL},()=>h(Page,{chat:()=>ctx.layout.selectPanel(null),home:()=>ctx.layout.selectPanel('pocket-kit.home')})));
       ctx.slots.inject('local.pocket-kit.home.tool',()=>ctx.slots.register({name:'local.pocket-kit.home.tool',id:PANEL,order:30,locale:PANEL,label:()=> '出门清单'},({renderCard})=>renderCard({id:'outing-checklist',title:'出门清单',description:'整理随身物品，出发前从容检查',icon:h(Icon),onClick:()=>ctx.layout.selectPanel(PANEL)})));
       ctx.effect(()=>()=>{if(ctx.layout.panelInfo.getSnapshot().activePanelId===PANEL)ctx.layout.selectPanel(null);});
     }};

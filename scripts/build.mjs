@@ -13,11 +13,18 @@ const entries = [
 ];
 const viewSources = Object.fromEntries(await Promise.all(['music', 'xiaoai'].map(async name => [name, await readFile(new URL(`features/${name}/view.js`, root), 'utf8')])));
 const homeStartup = await readFile(new URL('features/home/startup.js', root), 'utf8');
+const kitChrome = await readFile(new URL('features/shared/chrome.js', root), 'utf8');
+const kitChromeUsers = new Set(['home', 'shortcuts', 'outing-checklist', 'media', 'utilities', 'terminal-touch-keys']);
 const awaitedMessages = await readFile(new URL('features/utilities/messages.json',root),'utf8');
 const utilityViews = Object.fromEntries(await Promise.all(['health','file-manager','beijing-pass','bill-manager'].map(async name=>[name,await readFile(new URL(`features/${name}/view.js`,root),'utf8')])));
 const factories = [];
 for (const [name, file] of entries) {
   let source = await readFile(new URL(`features/${name}/${file}`, root), 'utf8');
+  if (kitChromeUsers.has(name)) {
+    const marker = '/* KIT_CHROME */';
+    if (source.split(marker).length !== 2) throw new Error(`Expected one kit chrome marker in ${name}`);
+    source = source.replace(marker, () => kitChrome);
+  }
   if (name === 'terminal-touch-keys') {
     const engine=(await readFile(new URL('features/terminal-touch-keys/viewport.js',root),'utf8')).replace(/^export /gm,'');
     source=source.replace('/* TERMINAL_VIEWPORT */',()=>engine);

@@ -1,19 +1,26 @@
-// Read-only real-GUI screenshots. No persisted credentials or replacement server.
+// Read-only real-GUI screenshots. Login state is stored in a private local profile for reuse.
 import {createRequire} from 'node:module';
-import {mkdtemp} from 'node:fs/promises';
+import {chmod,mkdir,mkdtemp,readFile,rename,rm,writeFile} from 'node:fs/promises';
 import {existsSync} from 'node:fs';
 import {homedir,tmpdir} from 'node:os';
-import {join,resolve} from 'node:path';
+import {dirname,join,resolve} from 'node:path';
 
 // Persistent tool root. /tmp is wiped at boot and ~/.cache is disposable.
 const TOOL_ROOT=process.env.POCKET_PREVIEW_ROOT||join(homedir(),'tools','pocket-kit-preview');
+// Reuse one authenticated browser state so the login token is only needed once.
+const STATE_FILE=process.env.POCKET_PREVIEW_STATE?resolve(process.env.POCKET_PREVIEW_STATE):join(TOOL_ROOT,'state','storage.json');
+const BASE_URL='https://dsh.xuekai.top:8888/';
 const help=`工具箱实页截图（只浏览，不修改业务数据）
-  node scripts/preview-ui.mjs          # 手机390px：首页、文件页
-  node scripts/preview-ui.mjs --all    # 桌面、320/375/390/430px手机、390px暗色
+  node scripts/preview-ui.mjs                 # 手机390px：首页、文件页
+  node scripts/preview-ui.mjs --all           # 桌面、320/375/390/430px手机、390px暗色
+  node scripts/preview-ui.mjs --music         # 额外打开音乐页，核验无小爱切换入口
+  node scripts/preview-ui.mjs --reset-login   # 删除已保存的登录状态；下次需要 token
+  node scripts/preview-ui.mjs --help
 环境变量：
-  POCKET_PREVIEW_TOKEN                用户临时授权的登录token（必填，不写入文件）
-  POCKET_BROWSER_TOOLS                包含node_modules/playwright的目录（默认持久工具目录）
-  POCKET_PREVIEW_ROOT                 持久工具根目录（默认~/tools/pocket-kit-preview）
+  POCKET_PREVIEW_TOKEN        首次登录或 --reset-login 后使用的临时token；之后可省略
+  POCKET_PREVIEW_STATE        可选，私有登录状态路径（默认~/tools/pocket-kit-preview/state/storage.json）
+  POCKET_BROWSER_TOOLS        包含node_modules/playwright的目录（默认持久工具目录）
+  POCKET_PREVIEW_ROOT         持久工具根目录（默认~/tools/pocket-kit-preview）
 默认预览地址：https://dsh.xuekai.top:8888/
 默认截图位置：系统临时目录下独立的pocket-kit-preview-*目录
 `;
@@ -33,9 +40,58 @@ function usePersistentBrowsers(){
   if(!process.env.PLAYWRIGHT_BROWSERS_PATH&&existsSync(join(browsers,'chromium_headless_shell-1254')))process.env.PLAYWRIGHT_BROWSERS_PATH=browsers;
 }
 
+// The state file contains login cookies and local storage. Keep the directory
+// private; never print its contents or write it into the project.
+async function readState(){
+  if(!existsSync(STATE_FILE))return undefined;
+  try{
+    const state=JSON.parse(await readFile(STATE_FILE,'utf8'));
+    if(!state||!Array.isArray(state.cookies)||!Array.isArray(state.origins))throw Error('格式无效');
+    return state;
+  }catch(error){
+    throw Error('已保存的预览登录状态无法读取（'+error.message+'）。可使用 --reset-login 后带 POCKET_PREVIEW_TOKEN 重新登录。');
+  }
+}
+
+async function saveState(state){
+  const directory=dirname(STATE_FILE),temporary=STATE_FILE+'.tmp-'+process.pid;
+  await mkdir(directory,{recursive:true,mode:0o700});
+  await chmod(directory,0o700);
+  await writeFile(temporary,JSON.stringify(state),{mode:0o600});
+  await chmod(temporary,0o600);
+  await rename(temporary,STATE_FILE);
+  await chmod(STATE_FILE,0o600);
+}
+
+function tokenUrl(token){
+  const url=new URL(BASE_URL);
+  if(token)url.searchParams.set('token',token);
+  return url.href;
+}
+
+async function waitForHome(page){
+  await page.locator('.pk-home, .pk-home-launcher').first().waitFor({state:'attached',timeout:30000});
+}
+
+async function authenticate(browser,options,token){
+  const context=await browser.newContext(options);
+  try{
+    const page=await context.newPage();
+    const response=await page.goto(tokenUrl(token),{waitUntil:'domcontentloaded',timeout:45000});
+    if(response&&!response.ok())throw Error('GUI登录失败，HTTP '+response.status()+'；请确认 POCKET_PREVIEW_TOKEN 有效。');
+    await waitForHome(page);
+    const state=await context.storageState();
+    await saveState(state);
+    return state;
+  }finally{await context.close();}
+}
+
 async function main(){
-  const token=process.env.POCKET_PREVIEW_TOKEN;
-  if(!token)throw Error('缺少POCKET_PREVIEW_TOKEN。请向用户取得临时登录授权；不要把凭据写入代码。');
+  const token=(process.env.POCKET_PREVIEW_TOKEN||'').trim();
+  const reset=process.argv.includes('--reset-login');
+  if(reset){await rm(STATE_FILE,{force:true});console.log('已删除保存的预览登录状态。');}
+  let state=await readState();
+  if(!state&&!token)throw Error('首次使用或重置后需要 POCKET_PREVIEW_TOKEN。请向用户取得临时登录授权；不要把凭据写入代码。');
   usePersistentBrowsers();
   const {chromium,devices}=loadPlaywright();
   const phone={...devices['iPhone 13'],locale:'zh-CN'};
@@ -47,18 +103,22 @@ async function main(){
     ['mobile-430',{...phone,viewport:{width:430,height:932}}],
     ['mobile-dark',{...phone,colorScheme:'dark'}],
   ]:[['mobile-390',phone]];
+  const withMusic=process.argv.includes('--music');
   const output=await mkdtemp(join(tmpdir(),'pocket-kit-preview-'));
   const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
   try{
+    if(!state){
+      state=await authenticate(browser,profiles[0][1],token);
+      console.log('已保存预览登录状态：'+STATE_FILE+'（私有目录，内容不显示；后续无需 token）');
+    }
     for(const [name,options] of profiles){
-      const context=await browser.newContext(options);
+      const context=await browser.newContext({...options,storageState:state});
       try{
         const page=await context.newPage(),errors=[];
         page.on('pageerror',error=>errors.push(redact(error.message,token)));
-        const url=new URL('https://dsh.xuekai.top:8888/');url.searchParams.set('token',token);
-        const response=await page.goto(url.href,{waitUntil:'domcontentloaded',timeout:45000});
-        if(!response?.ok())throw Error('GUI登录失败，HTTP '+response?.status()+'；请确认授权有效。');
-        await page.locator('.pk-home, .pk-home-launcher').first().waitFor({state:'attached',timeout:30000});
+        const response=await page.goto(BASE_URL,{waitUntil:'domcontentloaded',timeout:45000});
+        if(!response?.ok())throw Error('GUI会话不可用，HTTP '+(response?.status()??'未知')+'；请使用 --reset-login 后带 token 重新登录。');
+        try{await waitForHome(page);}catch{throw Error('工具箱未在30秒内加载；已保存的登录状态可能失效，请使用 --reset-login 后带 POCKET_PREVIEW_TOKEN 重新登录。');}
         // Our own launcher may be inside the closed mobile sidebar. Invoke its
         // existing navigation handler without opening or reading session views.
         if(!await page.locator('.pk-home').count())await page.locator('.pk-home-launcher').first().evaluate(button=>button.click());
@@ -73,8 +133,26 @@ async function main(){
         if(await failed.count())throw Error('文件页面出现业务错误；未读取或打印私人错误内容，请在UI检查。');
         await files.screenshot({path:join(output,'files-'+name+'.png')});
         const filesWidth=await files.evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
-        console.log(name,JSON.stringify({home:homeWidth,files:filesWidth,pageErrors:errors}));
-        if(homeWidth.scrollWidth>homeWidth.width||filesWidth.scrollWidth>filesWidth.width||errors.length)throw Error('发现页面溢出或运行时错误，请检查截图。');
+        const result={home:homeWidth,files:filesWidth};
+        if(withMusic){
+          await files.getByRole('button',{name:'返回首页'}).click();
+          await page.locator('.pk-home').waitFor();
+          await page.locator('[data-tool="music"]').click();
+          const music=page.locator('.pk-media[aria-label="音乐"]');await music.waitFor({state:'visible'});
+          await music.locator('h1').filter({hasText:'音乐'}).waitFor();
+          const musicFailed=music.locator('[role="alert"]');
+          if(await musicFailed.count())throw Error('音乐页面出现业务错误；未读取或打印私人错误内容，请在UI检查。');
+          const switchTabs=await music.locator('nav[aria-label="功能切换"]').count();
+          const xiaoaiButton=await music.getByRole('button',{name:'小爱音箱',exact:true}).count();
+          if(switchTabs||xiaoaiButton)throw Error('音乐页仍包含小爱切换入口。');
+          const navChat=await music.getByRole('button',{name:'返回会话'}).count();
+          const navHome=await music.getByRole('button',{name:'返回首页'}).count();
+          if(!navChat||!navHome)throw Error('音乐页缺少返回会话或返回首页按钮。');
+          await music.screenshot({path:join(output,'music-'+name+'.png')});
+          result.music=await music.evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
+        }
+        console.log(name,JSON.stringify({...result,pageErrors:errors}));
+        if(homeWidth.scrollWidth>homeWidth.width||filesWidth.scrollWidth>filesWidth.width||(result.music&&result.music.scrollWidth>result.music.width)||errors.length)throw Error('发现页面溢出或运行时错误，请检查截图。');
       }finally{await context.close();}
     }
     console.log('截图目录：'+output);

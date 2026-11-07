@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
-const source=(await readFile(new URL('./client.js',import.meta.url),'utf8')).replace('/* HOME_STARTUP */',()=> 'function mountHomeStartup(){return ()=>{};}');
+const chrome=await readFile(new URL('../shared/chrome.js',import.meta.url),'utf8');
+const source=(await readFile(new URL('./client.js',import.meta.url),'utf8')).replace('/* HOME_STARTUP */',()=> 'function mountHomeStartup(){return ()=>{};}').replace('/* KIT_CHROME */',()=>chrome);
 function setup(){
  let definition;
  vm.runInNewContext(source,{window:{__ModuleLoader__:{load:value=>{definition=value;}}}});
@@ -57,5 +58,39 @@ test('home keeps mobile, private-link and safe external navigation constraints',
  assert.match(source,/credentials:'same-origin'/);
  assert.match(source,/item\.iconDataUrl/);
  assert.doesNotMatch(source,/item\.notes/);
- assert.doesNotMatch(source,/localStorage|sessionStorage/);
+ // The only browser persistence is the non-sensitive last-panel id.
+ assert.match(source,/KIT_LAST_KEY = 'pocket-kit\.last-panel\.v1'/);
+ assert.doesNotMatch(source,/sessionStorage|document\.cookie|indexedDB/);
+});
+function storageSetup() {
+  let definition;
+  const data = new Map();
+  vm.runInNewContext(source, { window: { __ModuleLoader__: { load(value) { definition = value; } }, localStorage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, String(value)), removeItem: key => data.delete(key) } } });
+  return { plugin: definition.factory(name => { assert.equal(name, 'react'); return { createElement: (type, props, ...children) => ({ type, props, children }) }; }), data };
+}
+test('toolbox launcher reopens the last normal page and falls back safely', () => {
+  const { plugin, data } = storageSetup();
+  const registrations = [], nav = [], listeners = [];
+  let active = 'pocket-kit.home';
+  plugin.apply({
+    effect(fn) { fn(); },
+    locale: { register: () => () => {} },
+    slots: { inject: (_key, fn) => fn(), register: (meta, component) => { registrations.push({ meta, component }); return () => {}; } },
+    layout: {
+      selectPanel(id) {
+        if (id && !['pocket-kit.home', 'pocket-kit.music'].includes(id)) throw new Error('panel not registered');
+        active = id; nav.push(id);
+      },
+      panelInfo: {
+        getSnapshot: () => ({ activePanelId: active }),
+        subscribe(fn) { listeners.push(fn); return () => {}; },
+      },
+    },
+  });
+  const footer = registrations.find(item => item.meta.name === 'sidebar.footer.action');
+  active = 'pocket-kit.music'; for (const listener of listeners) listener();
+  assert.equal(data.get('pocket-kit.last-panel.v1'), 'pocket-kit.music');
+  nav.length = 0; footer.component({}).props.open(); assert.deepEqual(nav, ['pocket-kit.music']);
+  data.set('pocket-kit.last-panel.v1', 'pocket-kit.removed');
+  nav.length = 0; footer.component({}).props.open(); assert.deepEqual(nav, ['pocket-kit.home']);
 });
