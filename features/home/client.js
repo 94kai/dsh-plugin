@@ -52,6 +52,10 @@ window.__ModuleLoader__.load({
         )
       ));
     }
+    const headerCss = `.pk-home-header-launcher{display:inline-flex;align-items:center;justify-content:center;flex:none;width:28px;height:28px;margin:0;padding:0;border:0;border-radius:var(--dsw-radius-md,8px);background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer}.pk-home-header-launcher:hover{background:var(--dsw-alias-interactive-bg-hover)}.pk-home-header-launcher:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}`;
+    function HeaderLauncher({open}){
+      return h(React.Fragment,null,h('style',null,headerCss),h('button',{type:'button',className:'pk-home-header-launcher',title:'打开工具箱','aria-label':'打开工具箱',onClick:open},h(HomeIcon,{size:15})));
+    }
     // 底部入口仅依赖该Slot明确提供的wide和locale，不依赖页面状态hook。
     function Footer({wide,t,open}){
       return h('div',{className:'pk-home-footer','data-wide':String(wide)},h('style',null,css),h('button',{type:'button',className:'pk-home-launcher',title:t('title'),'aria-label':t('title'),onClick:open},h(HomeIcon),wide&&h('span',null,t('title'))));
@@ -65,6 +69,7 @@ window.__ModuleLoader__.load({
         return()=>{stopStartup?.();dispose();};
       });
       ctx.slots.inject('sidebar.footer.action',()=>ctx.slots.register({name:'sidebar.footer.action',id:'pocket-kit-home',order:10,locale:NS},props=>h(Footer,{...props,open:()=>kitOpenLast(ctx)})));
+      ctx.slots.inject('conversation.session.header.utilities',()=>ctx.slots.register({name:'conversation.session.header.utilities',id:'pocket-kit-home',order:10},()=>h(HeaderLauncher,{open:()=>kitOpenLast(ctx)})));
       ctx.effect(()=>()=>{if(ctx.layout.panelInfo.getSnapshot().activePanelId===PANEL)ctx.layout.selectPanel(null);});
     }};
   }

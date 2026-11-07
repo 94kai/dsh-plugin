@@ -14,6 +14,7 @@ const help=`工具箱实页截图（只浏览，不修改业务数据）
   node scripts/preview-ui.mjs                 # 手机390px：首页、文件页
   node scripts/preview-ui.mjs --all           # 桌面、320/375/390/430px手机、390px暗色
   node scripts/preview-ui.mjs --music         # 额外打开音乐页，核验无小爱切换入口
+  node scripts/preview-ui.mjs --header        # 返回会话，核验标题工具箱图标可见且可打开原工具箱
   node scripts/preview-ui.mjs --reset-login   # 删除已保存的登录状态；下次需要 token
   node scripts/preview-ui.mjs --help
 环境变量：
@@ -125,6 +126,16 @@ async function main(){
         const home=page.locator('.pk-home');await home.locator('.pk-home-tool').first().waitFor();
         const uncovered=await home.evaluate(el=>{const r=el.getBoundingClientRect();const hit=document.elementFromPoint(Math.min(innerWidth-16,r.right-16),Math.max(64,r.top+36));return !!hit?.closest('.pk-home');});
         if(!uncovered)throw Error('工具箱被宿主侧栏或浮层遮挡；请先关闭遮挡，再截图，不能按遮挡截图验收。');
+        if(process.argv.includes('--header')){
+          await home.getByRole('button',{name:'返回会话',exact:true}).click();
+          const launcher=page.locator('.pk-home-header-launcher');
+          try{await launcher.waitFor({state:'visible',timeout:5000});}catch(error){await page.screenshot({path:join(output,'header-unavailable-'+name+'.png')});console.log('入口检查失败截图目录：'+output);throw error;}
+          const geometry=await launcher.evaluate(el=>{const r=el.getBoundingClientRect();return {width:r.width,height:r.height,visible:r.left>=0&&r.right<=innerWidth&&document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.pk-home-header-launcher')===el};});
+          if(!geometry.visible||geometry.width<28||geometry.height<28)throw Error('标题入口被遮挡、溢出或触控尺寸不足。');
+          await launcher.screenshot({path:join(output,'header-icon-'+name+'.png')});
+          await launcher.click();await home.waitFor({state:'visible'});
+          console.log(name,'标题入口打开/返回通过',JSON.stringify(geometry));
+        }
         await home.screenshot({path:join(output,'home-'+name+'.png')});
         const homeWidth=await home.evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth}));
         await home.locator('[data-tool="file-manager"]').click();

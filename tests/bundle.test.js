@@ -14,14 +14,21 @@ test('built client registers only Pocket Kit and composes all feature entries', 
     assert.equal(name, 'react');
     return { createElement: (type, props) => ({ type, props }) };
   });
-  const registrations = [], disposals = [];
+  const registrations = [], disposals = [], selectedPanels = [];
   plugin.apply({
     effect: callback => { const dispose = callback(); if (dispose) disposals.push(dispose); },
     locale: { register: () => () => {}, bind: () => key => key },
     slots: { inject: (key, callback) => callback(), register: (meta, component) => { registrations.push({ meta, component }); return () => {}; } },
-    layout: { panelInfo: { getSnapshot: () => ({ activePanelId: null }) }, selectPanel() {} },
+    layout: { panelInfo: { getSnapshot: () => ({ activePanelId: null }) }, selectPanel(id) {selectedPanels.push(id);} },
   });
-  assert.equal(registrations.length, 22);
+  assert.equal(registrations.length, 23);
+  const header = registrations.filter(({meta})=>meta.name==='conversation.session.header.utilities');
+  assert.equal(header.length,1);
+  assert.equal(header[0].meta.id,'pocket-kit-home');
+  assert.equal(typeof header[0].component().props.open,'function');
+  header[0].component().props.open();
+  assert.equal(selectedPanels.at(-1),'pocket-kit.home');
+  assert.ok(!registrations.some(({meta})=>meta.name==='conversation.view'));
   assert.equal(registrations.filter(({meta})=>meta.name==='local.terminal.touch.keys').length,1);
   assert.equal(registrations.filter(({meta})=>meta.name==='main'&&meta.key==='pocket-kit.native-terminal').length,1);
   assert.ok(registrations.some(({ meta }) => meta.name === 'main' && meta.key === 'pocket-kit.home' && meta.children['local.pocket-kit.home.tool']));
