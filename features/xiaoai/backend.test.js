@@ -104,14 +104,16 @@ test('offline config edits preserve paused state and write mode 0600', async t =
   assert.equal(music.children.size, 0);
 });
 
-test('playlists, shared favorites and announcements survive writes and reload', async t => {
-  const { directory, music } = await fixture(t);
+test('playlists persist without retaining retired local favorite data', async t => {
+  const { directory, music } = await fixture(t,{library:{favorites:[{path:'/fixture/music/retired.mp3'}],playlists:{},announcements:{}}});
   const song = { path: '/fixture/music/song.mp3', title: 'Fixture song' };
   await request(music, `${base}/playlist`, 'POST', { songs: [song] });
-  await request(music, `${base}/favorites`, 'PUT', { song, favorite: true });
+  const stored = JSON.parse(await readFile(join(directory, 'xiaoai-music/library.json'),'utf8'));
+  assert.equal(Object.hasOwn(stored,'favorites'),false);
   const loaded = new XiaoAiMusicModule({ dataDir: directory }); await loaded.initialize();
   const { result } = await request(loaded, `${base}/collection`);
-  assert.equal(result.playlist.length, 1); assert.equal(result.favorites.length, 1); assert.deepEqual(result.announcements, []);
+  assert.equal(result.playlist.length, 1); assert.deepEqual(result.favorites, []);assert.equal(result.favoritesReady,false);
+  await assert.rejects(request(loaded,`${base}/favorites`,'PUT',{song,favorite:true}),{status:503});
   assert.equal((await stat(join(directory, 'xiaoai-music/library.json'))).mode & 0o777, 0o600);
   await loaded.dispose();
 });
@@ -165,6 +167,20 @@ test('dispose kills only owned fake child and clears retry timers', async t => {
   music.restartTimers.set('speaker-a', setTimeout(() => { throw new Error('Retry was not cancelled'); }, 1000));
   await music.dispose();
   assert.deepEqual(signals, ['SIGTERM']); assert.equal(music.children.size, 0); assert.equal(music.restartTimers.size, 0);
+});
+
+test('NAS favorites are the only source, never write legacy storage, and fail closed on lost authorization', async t => {
+  const local={favorites:[{path:'/fixture/music/local.mp3',name:'原收藏'}],playlists:{},announcements:{}};
+  const {music,directory}=await fixture(t,{library:local});const writes=[];
+  music.fnos={favorites:async()=>[{path:'/fixture/music/nas.mp3',guid:'nas-id',name:'飞牛收藏'},{path:'/outside/music.mp3',guid:'out',name:'库外'},{path:'/fixture/music/cue.flac',guid:'cue',cue:true}],setFavorite:async(song,favorite)=>{writes.push({song,favorite});return {success:true};},dispose(){}};
+  const before=await readFile(join(directory,'xiaoai-music/library.json'),'utf8');
+  const loaded=await request(music,`${base}/collection`);assert.equal(loaded.result.favoritesReady,true);assert.equal(loaded.result.favoritesSource,'fnos');assert.equal(loaded.result.favorites.length,1);assert.equal(loaded.result.favorites[0].guid,'nas-id');assert.equal(loaded.result.favoritesTotal,3);
+  await request(music,`${base}/favorites`,'PUT',{song:{path:'/fixture/music/nas.mp3'},favorite:true});assert.equal(writes.length,1);assert.equal(await readFile(join(directory,'xiaoai-music/library.json'),'utf8'),before);
+  const queued=[];music.worker=async(_profile,url,options)=>{queued.push({url,body:JSON.parse(options.body)});return {success:true};};
+  await request(music,`${base}/collection/play`,'POST',{source:'favorites',index:0,path:'/fixture/music/nas.mp3'});assert.deepEqual(queued[0].body.paths,['/fixture/music/nas.mp3']);
+  music.fnos.favorites=async()=>{throw Object.assign(new Error('请重新连接'),{status:401});};
+  const expired=await request(music,`${base}/collection`);assert.equal(expired.result.favoritesReady,false);assert.deepEqual(expired.result.favorites,[]);assert.deepEqual(expired.result.playlist,[]);
+  await assert.rejects(request(music,`${base}/collection/play`,'POST',{source:'favorites',index:0}),{status:401});assert.equal(queued.length,1);
 });
 
 test('Python source safety and shell quoting regressions use mocks only', t => {

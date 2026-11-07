@@ -32,7 +32,7 @@ export class XiaoAiMusicModule {
     this.libraryFile = path.join(this.dataDir, 'library.json');
     this.children = new Map();
     this.config = null;
-    this.library = { favorites: [], playlists: {}, announcements: {} };
+    this.library = { playlists: {}, announcements: {} };
     this.shuttingDown = false;
     this.automation = new MusicAutomation(this);
   }
@@ -43,10 +43,12 @@ export class XiaoAiMusicModule {
     if (!config || !Array.isArray(config.profiles)) throw httpError('音箱配置格式无效；未覆盖原文件', 503);
     this.config = { ...config, profiles: config.profiles.map(profile => this.normalizeProfile(profile, profile)) };
     if (new Set(this.config.profiles.map(p => p.id)).size !== this.config.profiles.length) throw httpError('音箱标识重复', 503);
-    const library = await readPrivateJson(this.libraryFile, { favorites: [], playlists: {}, announcements: {} });
+    const library = await readPrivateJson(this.libraryFile, { playlists: {}, announcements: {} });
     if (!library || typeof library !== 'object' || Array.isArray(library)) throw httpError('音乐收藏数据格式无效；未覆盖原文件', 503);
-    this.library = { ...library, favorites: library.favorites ?? [], playlists: library.playlists ?? {}, announcements: library.announcements ?? {} };
-    if (!Array.isArray(this.library.favorites) || !this.library.playlists || typeof this.library.playlists !== 'object' || Array.isArray(this.library.playlists) || !this.library.announcements || typeof this.library.announcements !== 'object' || Array.isArray(this.library.announcements)) throw httpError('音乐收藏数据格式无效；未覆盖原文件', 503);
+    const storedLibrary = { ...library };
+    delete storedLibrary.favorites; // 已退役的本地收藏不得在后续列表保存时重新写回。
+    this.library = { ...storedLibrary, playlists: library.playlists ?? {}, announcements: library.announcements ?? {} };
+    if (!this.library.playlists || typeof this.library.playlists !== 'object' || Array.isArray(this.library.playlists) || !this.library.announcements || typeof this.library.announcements !== 'object' || Array.isArray(this.library.announcements)) throw httpError('音乐收藏数据格式无效；未覆盖原文件', 503);
     this.library.playlists = Object.assign(Object.create(null), this.library.playlists);
     this.library.announcements = Object.assign(Object.create(null), this.library.announcements);
     await this.automation.initialize();
@@ -224,7 +226,7 @@ export class XiaoAiMusicModule {
     await Promise.all([...this.starting.values()].map(operation => operation.catch(() => {})));
     await Promise.all([...this.children.keys()].map(id => this.stop(id)));
   }
-  async dispose() { await this.shutdown(); await this.automation.writes.catch(() => {}); await Promise.allSettled([...this.pendingWrites]); }
+  async dispose() { this.fnos?.dispose(); await this.shutdown(); await this.automation.writes.catch(() => {}); await Promise.allSettled([...this.pendingWrites]); }
 
   profile(id) { return this.config.profiles.find(item => item.id === id); }
 
@@ -264,8 +266,16 @@ export class XiaoAiMusicModule {
     profile.volume = value; await this.save(); return result;
   }
 
+  async fnosFavorites(profile,signal) {
+    if(!this.fnos)throw httpError('飞牛音乐连接服务不可用',503);
+    const songs=await this.fnos.favorites(signal);
+    const playable=songs.filter(song=>song.path&&!song.cue&&profile.musicDirs.some(root=>{const rel=path.relative(path.resolve(root),song.path);return rel&&!rel.startsWith('..')&&!path.isAbsolute(rel);}));
+    const counts=new Map();for(const song of playable)counts.set(song.path,(counts.get(song.path)||0)+1);
+    return {songs:playable.filter(song=>counts.get(song.path)===1),total:songs.length};
+  }
   async handle(req, res, url) {
     const base = '/api/modules/xiaoai-music';
+    if (url.pathname.startsWith(base+'/fnos/') && this.fnos) return this.fnos.handle(req,res,url);
     if (!url.pathname.startsWith(base)) return false;
     if (url.pathname === `${base}/profiles` && req.method === 'GET') {
       const profiles = await Promise.all(this.config.profiles.map(async profile => {
@@ -289,7 +299,9 @@ export class XiaoAiMusicModule {
     }
     if (action === 'search' && req.method === 'GET') { json(res, 200, await this.worker(profile, `/search?q=${encodeURIComponent(String(url.searchParams.get('q') || '').slice(0, 100))}`)); return true; }
     if (action === 'collection' && req.method === 'GET') {
-      json(res, 200, { playlist: this.playlist(profile), favorites: this.library.favorites, announcements: this.announcements(profile) }); return true;
+      try{const result=await this.fnosFavorites(profile,req.signal);json(res,200,{playlist:this.playlist(profile),favorites:result.songs,favoritesReady:true,favoritesSource:'fnos',favoritesTotal:result.total});}
+      catch(error){json(res,200,{playlist:this.playlist(profile),favorites:[],favoritesReady:false,favoritesSource:'fnos',favoritesError:error.message});}
+      return true;
     }
     if (action === 'playlist' && req.method === 'POST') {
       const payload = await body(req); const target = payload.mode === 'replace' ? [] : [...this.playlist(profile)];
@@ -304,14 +316,13 @@ export class XiaoAiMusicModule {
     }
     if (action === 'favorites' && req.method === 'PUT') {
       const payload = await body(req); const song = this.normalizeSong(payload.song, profile);
-      const index = this.library.favorites.findIndex(item => item.path === song.path);
-      if (payload.favorite === false) { if (index >= 0) this.library.favorites.splice(index, 1); }
-      else if (index < 0) this.library.favorites.unshift(song);
-      await this.saveLibrary(); json(res, 200, { favorites: this.library.favorites }); return true;
+      if(!this.fnos)throw httpError('飞牛音乐连接服务不可用',503);
+      json(res,200,await this.fnos.setFavorite(song,payload.favorite,req.signal));return true;
     }
     if (action === 'collection/play' && req.method === 'POST') {
-      const payload = await body(req); const source = payload.source === 'favorites' ? this.library.favorites : this.playlist(profile);
-      const start = Math.max(0, Math.min(source.length - 1, Number(payload.index) || 0));
+      const payload = await body(req); const source = payload.source === 'favorites' ? (await this.fnosFavorites(profile,req.signal)).songs : this.playlist(profile);
+      const start = payload.path ? source.findIndex(song=>song.path===payload.path) : Math.max(0, Math.min(source.length - 1, Number(payload.index) || 0));
+      if(start<0)throw httpError('列表已变化，请刷新后重新选择',409);
       if (!source.length) throw Object.assign(new Error('列表为空'), { status: 400 });
       const ordered = source.slice(start);
       const repeat = Math.max(1, Math.min(20, Number(payload.repeat) || 1));

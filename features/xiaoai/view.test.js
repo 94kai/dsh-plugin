@@ -7,6 +7,10 @@ const source = await readFile(new URL('./view.js', import.meta.url), 'utf8');
 // Define functions only. No React hooks, DOM, browser, network or speaker actions run.
 const { createXiaoaiReadGate, xiaoaiReadbackAfterCommit } = vm.runInNewContext(`${source}\n({ createXiaoaiReadGate, xiaoaiReadbackAfterCommit });`, {});
 
+test('retired announcement merge and UI are absent', () => {
+  assert.doesNotMatch(source, /xiaoaiCombinedHistory|collection\.announcements|清空旧版记录|item\.legacy/);
+});
+
 test('collection gate accepts only newest read for the current device', () => {
   const gate = createXiaoaiReadGate();
   const first = gate.begin('A'), second = gate.begin('A');
@@ -55,7 +59,7 @@ test('UI gates owned collections and disables drafts while actions run', () => {
   assert.match(source, /collectionState\.profileId === selected && collectionState\.ready/);
   assert.match(source, /collectionGate\.current\.accepts\(ticket, selectedRef\.current\)/);
   assert.match(source, /if \(module === 'playback'.*invalidateCollection\(\)/);
-  assert.match(source, /return h\('fieldset', \{ disabled: action\.busy/);
+  assert.match(source, /return h\('fieldset', \{ ref: rootRef, disabled: action\.busy/);
   assert.match(source, /setControlDraft\(null\); await readback/);
   assert.match(source, /setConfigDraft\(null\); await readback/);
   assert.match(source, /请仅刷新状态，不要重复操作/);
