@@ -10,6 +10,7 @@
 
 - **只考虑中文。** 工具箱前端的标题、按钮、提示与新增功能默认统一中文，不为本项目新增多语言适配，也不随浏览器语言自动切成英文。文件名、目录名及用户数据不擅自翻译。
 - **当前预览地址：<https://dsh.xuekai.top:8888/>。** 这是正在使用的 DSH GUI；不要另起开发服务器冒充该页面。新会话以最新 runtime context 确认地址是否变化。
+- **切换 DSH 账号：** 远程 HTTPS 域名登录会报 `account: protocol`（DSH 只接受本机 HTTP 回调）。按 [DSH 账号登录手册](docs/dsh-account-login.md) 用 SSH 隧道访问 `http://localhost:18888` 登录，完成后撤回临时 SSH 转发；不要改 DSH 监听或 Lucky。
 - **默认不使用浏览器验证 UI。** 除非用户明确要求使用浏览器验证 UI，否则每次开发、修改或修复本插件后，都不要主动打开浏览器、运行 Playwright 实页验证或截图；按改动范围执行必要的语法、构建和非浏览器测试，并如实注明未进行浏览器 UI 验证。本规则优先于项目其他文档中默认要求实页预览或浏览器验收的约定。
 - **仅在用户明确要求浏览器 UI 验证时：** 手机是主场景；使用移动 UA、触屏和手机视口，不只缩窄桌面窗口。检查320/375/390/430px和明暗主题，关闭遮挡侧栏后截图。若当前模型不支持图片输入，必须明说，不能宣称已看图验收。
 - **浏览器操作入口（仅在用户明确要求时读取和使用）：** [实页预览与截图](docs/browser-preview.md)，复用 `scripts/preview-ui.mjs`（Playwright）。浏览器和测试依赖在 `~/tools/pocket-kit-preview/`（持久目录，已从 `/tmp`、`~/.cache` 迁入）。执行浏览器验证前先读此文档，不依赖旧聊天或临时脚本；现有浏览器能用时不要重新下载。
@@ -35,6 +36,7 @@
 - 功能：[工具箱导航](docs/features/home.md) · [快捷访问](docs/features/shortcuts.md) · [连接测速](docs/features/network-speed.md) · [出门清单](docs/features/outing-checklist.md) · [音乐](docs/features/music.md) · [小爱音箱](docs/features/xiaoai.md)。
 - 新迁入：[文件](docs/features/file-manager.md) · [进京证](docs/features/beijing-pass.md) · [健康](docs/features/health.md) · [终端](docs/features/terminal.md) · [记账单](docs/features/bill-manager.md)。
 - [右侧终端辅助按键](docs/features/terminal-touch-keys.md)：同包功能与本机内置终端扩展桥，DSH升级兼容限制。
+- [DSH 账号登录与切换](docs/dsh-account-login.md)：远程域名登录报 `account: protocol` 的原因、SSH 隧道登录步骤、错误对照与 SSH 转发回滚。
 - [五模块迁移记录](docs/utilities-migration.md)：数据核验、安装状态和功能差异。
 - [音乐与小爱迁移记录](docs/music-xiaoai-migration.md)：数据保留、兼容路径、设备默认暂停及验证边界。涉及真实音箱前必读。
 - [功能文档模板](docs/features/_template.md)：新增功能时复制，记录 API、数据、重要决策、生命周期及验证限制。
