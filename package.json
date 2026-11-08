@@ -78,6 +78,7 @@
     "features/beijing-pass/locale/*.json",
     "features/beijing-pass/icon.svg",
     "features/bill-manager/*.mjs",
+    "features/bill-manager/skill/SKILL.md",
     "features/bill-manager/locale/*.json",
     "features/bill-manager/icon.svg",
     "features/health/columns.json",

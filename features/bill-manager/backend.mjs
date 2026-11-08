@@ -30,7 +30,7 @@ const billMappings = [
 ];
 const alipayMappings = [
   { target: '筛选', sources: ['收/付款方式'], transform: '命中自定义过滤规则时排除' },
-  { target: '日期', sources: ['交易时间'], transform: '保留完整日期时间' },
+  { target: '日期', sources: ['交易时间'], transform: '统一转为年月日（如 11/7/26 → 2026-11-07）' },
   { target: '收支类型', sources: ['收/支'], transform: '原值映射' },
   { target: '金额', sources: ['金额'], transform: '原值映射' },
   { target: '类别', sources: ['收/支'], transform: '支出映射为临时支出，收入映射为临时收入；自定义规则可覆盖' },
@@ -43,11 +43,28 @@ const cmbMappings = [
   { target: '收支类型', sources: ['交易金额'], transform: '正数映射为收入，负数映射为支出' },
   { target: '金额', sources: ['交易金额'], transform: '取绝对值' },
   { target: '类别', sources: ['交易金额'], transform: '支出映射为临时支出，收入映射为临时收入；自定义规则可覆盖' },
-  { target: '备注', sources: ['交易摘要', '对手信息'], transform: '按顺序使用空格拼接' },
+  { target: '备注', sources: ['交易摘要', '对手信息'], transform: '按顺序使用空格拼接；同笔支付宝记录存在且日期金额唯一时补充“支付宝：商品说明”' },
   { target: '所属账本', sources: [], transform: '固定值：日常账本' },
   { target: '收支账户', sources: [], transform: '使用已迁移的账户映射' }
 ];
 const spreadsheetLimit = 20 * 1024 * 1024;
+
+// 支付宝导出通常是 月/日/年（如 11/7/26），记账软件要求年月日。
+function normalizeAlipayDate(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const iso = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}-${iso[3].padStart(2, '0')}`;
+  const slash = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})/);
+  if (!slash) return text;
+  let month = Number(slash[1]);
+  let day = Number(slash[2]);
+  let year = Number(slash[3]);
+  if (slash[3].length === 2) year += 2000;
+  if (month > 12 && day <= 12) [month, day] = [day, month];
+  if (!(month >= 1 && month <= 12) || !(day >= 1 && day <= 31)) return text;
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
 
 export class BillManagerModule {
   constructor({ dataDir }) {
@@ -206,7 +223,7 @@ export class BillManagerModule {
       .filter(row => !this.config.alipayFilterRules.some(rule => String(row.values['收/付款方式']||'').includes(rule.keyword)))
       .map(row => {
         const mapped = {
-          '日期': String(row.values['交易时间'] || '').trim(),
+          '日期': normalizeAlipayDate(row.values['交易时间']),
           '收支类型': row.values['收/支'],
           '金额': row.values['金额'],
           '类别': row.values['收/支'] === '支出' ? '临时支出' : row.values['收/支'] === '收入' ? '临时收入' : '',
@@ -218,8 +235,29 @@ export class BillManagerModule {
         applyCategoryRule(mapped);
         return Object.fromEntries(billColumns.map(column => [column, mapped[column] || '']));
       }) : [];
+    // 支付宝中由该银行卡付款的明细，按“日期+金额”索引，供招行备注补充商品信息。
+    const alipayCardIndex = new Map();
+    if (alipay) {
+      const cardKeywords = this.config.alipayFilterRules.map(rule => rule.keyword).filter(Boolean);
+      for (const row of alipay.rows) {
+        const method = String(row.values['收/付款方式'] || '');
+        if (!cardKeywords.some(keyword => method.includes(keyword))) continue;
+        const cents = Math.round(Number(String(row.values['金额'] || '').replaceAll(',', '')) * 100);
+        const item = String(row.values['商品说明'] || '').trim();
+        if (!item || !Number.isFinite(cents)) continue;
+        const key = `${normalizeAlipayDate(row.values['交易时间'])}|${Math.abs(cents)}`;
+        if (!alipayCardIndex.has(key)) alipayCardIndex.set(key, []);
+        alipayCardIndex.get(key).push(item);
+      }
+    }
     const cmbRows = cmb && billColumns.length ? cmb.rows.map(row => {
       const amount = Number(String(row.values['交易金额'] || '').replaceAll(',', ''));
+      const note = [row.values['交易摘要'], row.values['对手信息']]
+        .map(value => String(value || '').trim()).filter(Boolean).join(' ');
+      // 同一笔招行付款在支付宝里通常留有商品信息；日期+金额唯一命中时才补充，避免张冠李戴。
+      const cents = Number.isFinite(amount) ? Math.round(Math.abs(amount) * 100) : null;
+      const matched = cents === null ? [] : alipayCardIndex.get(`${String(row.values['记账日期'] || '').trim()}|${cents}`) || [];
+      const extra = matched.length === 1 && !note.includes(matched[0]) ? `支付宝：${matched[0]}` : '';
       const mapped = {
         '日期': row.values['记账日期'],
         '收支类型': amount > 0 ? '收入' : amount < 0 ? '支出' : '',
@@ -227,8 +265,7 @@ export class BillManagerModule {
         '类别': amount > 0 ? '临时收入' : amount < 0 ? '临时支出' : '',
         '所属账本': '日常账本',
         '收支账户': this.accounts.cmb,
-        '备注': [row.values['交易摘要'], row.values['对手信息']]
-          .map(value => String(value || '').trim()).filter(Boolean).join(' ')
+        '备注': [note, extra].filter(Boolean).join(' ')
       };
       applyCategoryRule(mapped);
       return Object.fromEntries(billColumns.map(column => [column, mapped[column] || '']));
@@ -325,7 +362,11 @@ export class BillManagerModule {
     const matrix = [columns, ...rows.map(row => columns.map(column => row[column] || ''))];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(matrix), '账单');
-    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    // 显式写入 sheetFormatPr，兼容缺少默认行高时会算出 NaN 的预览器。
+    return XLSX.write(workbook, {
+      type: 'buffer', bookType: 'xlsx',
+      sheetFormat: { defaultRowHeight: 15, outlineLevelRow: '0' }
+    });
   }
 
   async save() {
