@@ -34,6 +34,7 @@
 - 功能：[工具箱导航](docs/features/home.md) · [快捷访问](docs/features/shortcuts.md) · [连接测速](docs/features/network-speed.md) · [出门清单](docs/features/outing-checklist.md) · [音乐](docs/features/music.md) · [小爱音箱](docs/features/xiaoai.md)。
 - 新迁入：[文件](docs/features/file-manager.md) · [进京证](docs/features/beijing-pass.md) · [健康](docs/features/health.md) · [终端](docs/features/terminal.md) · [记账单](docs/features/bill-manager.md)。
 - [右侧终端辅助按键](docs/features/terminal-touch-keys.md)：同包功能与本机内置终端扩展桥，DSH升级兼容限制。
+- [DSH 独立窗口手动登录与升级恢复手册](docs/host-token-login.md)：桌面安装版 token 输入入口；升级失效后按文档确认新版运行路径、备份、试打补丁、验证、重启及回滚；非工具箱插件功能，禁止盲套旧补丁或旧整文件。
 - [五模块迁移记录](docs/utilities-migration.md)：数据核验、安装状态和功能差异。
 - [音乐与小爱迁移记录](docs/music-xiaoai-migration.md)：数据保留、兼容路径、设备默认暂停及验证边界。涉及真实音箱前必读。
 - [功能文档模板](docs/features/_template.md)：新增功能时复制，记录 API、数据、重要决策、生命周期及验证限制。
