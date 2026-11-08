@@ -15,6 +15,7 @@ const help=`工具箱实页截图（只浏览，不修改业务数据）
   node scripts/preview-ui.mjs --all           # 桌面、320/375/390/430px手机、390px暗色
   node scripts/preview-ui.mjs --music         # 额外打开音乐页，核验无小爱切换入口
   node scripts/preview-ui.mjs --records      # 仅健康、记账单；--all 检查四种手机宽度明暗主题
+  node scripts/preview-ui.mjs --terminal      # 仅打开原生终端、截按键栏，不发送按键；--all 检查四种宽度明暗主题
   node scripts/preview-ui.mjs --header        # 返回会话，核验标题工具箱图标可见且可打开原工具箱
   node scripts/preview-ui.mjs --reset-login   # 删除已保存的登录状态；下次需要 token
   node scripts/preview-ui.mjs --help
@@ -105,7 +106,9 @@ async function main(){
     ['mobile-430',{...phone,viewport:{width:430,height:932}}],
     ['mobile-dark',{...phone,colorScheme:'dark'}],
   ]:[['mobile-390',phone]];
-  if(process.argv.includes('--all')&&process.argv.includes('--records'))for(const width of [320,375,430])profiles.push(['mobile-dark-'+width,{...phone,viewport:{width,height:812},colorScheme:'dark'}]);
+  if(process.argv.includes('--all')&&(process.argv.includes('--records')||process.argv.includes('--terminal')))for(const width of [320,375,430])profiles.push(['mobile-dark-'+width,{...phone,viewport:{width,height:812},colorScheme:'dark'}]);
+  const requestedProfile=process.argv.find(value=>value.startsWith('--profile='))?.slice('--profile='.length);
+  if(requestedProfile){const selected=profiles.filter(([name])=>name===requestedProfile);if(!selected.length)throw Error('未知预览profile；请配合 --all 使用已定义的名称');profiles.splice(0,profiles.length,...selected);}
   const withMusic=process.argv.includes('--music');
   const output=await mkdtemp(join(tmpdir(),'pocket-kit-preview-'));
   const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
@@ -128,6 +131,26 @@ async function main(){
         const home=page.locator('.pk-home');await home.locator('.pk-home-tool').first().waitFor();
         const uncovered=await home.evaluate(el=>{const r=el.getBoundingClientRect();const hit=document.elementFromPoint(Math.min(innerWidth-16,r.right-16),Math.max(64,r.top+36));return !!hit?.closest('.pk-home');});
         if(!uncovered)throw Error('工具箱被宿主侧栏或浮层遮挡；请先关闭遮挡，再截图，不能按遮挡截图验收。');
+        if(process.argv.includes('--terminal')){
+          // Open via our existing card, never type into or capture terminal contents.
+          await home.locator('[data-tool="terminal"]').click();
+          const bar=page.locator('.ttk-bar').first();
+          try{await bar.waitFor({state:'visible',timeout:15000});}catch{
+            const noSession=await page.getByText('请先选择一个会话或返回对话，再打开终端。',{exact:true}).count();
+            const failed=await page.getByText('终端暂时无法打开，请刷新后重试。',{exact:true}).count();
+            throw Error('原 GUI 已启动，但终端按键栏不可见；无会话提示='+Boolean(noSession)+'，入口失败提示='+Boolean(failed)+'，pageerror 数='+errors.length+'。未读取会话或终端内容。');
+          }
+          await bar.getByRole('button',{name:'Tab：补全或缩进',exact:true}).waitFor();
+          await bar.getByRole('button',{name:/^Vim 退出：/}).waitFor();
+          const geometry=await bar.evaluate(el=>{
+            const r=el.getBoundingClientRect();
+            return {width:r.width,scrollWidth:el.scrollWidth,buttons:[...el.querySelectorAll('button')].map(button=>{const b=button.getBoundingClientRect();return {label:button.textContent,width:b.width,height:b.height,visible:b.left>=0&&b.right<=innerWidth&&b.top>=0&&b.bottom<=innerHeight&&document.elementFromPoint(b.x+b.width/2,b.y+b.height/2)?.closest('button')===button};})};
+          });
+          if(geometry.scrollWidth>Math.ceil(geometry.width)||geometry.buttons.length!==5||geometry.buttons.some(b=>!b.visible)||errors.length)throw Error('终端按键溢出、被遮挡或页面运行错误；未输出终端内容');
+          await bar.screenshot({path:join(output,'terminal-keys-'+name+'.png')});
+          console.log(name,'终端按键栏（未发送按键）',JSON.stringify(geometry));
+          continue;
+        }
         if(process.argv.includes('--header')){
           await home.getByRole('button',{name:'返回会话',exact:true}).click();
           const launcher=page.locator('.pk-home-header-launcher');

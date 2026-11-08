@@ -6,7 +6,7 @@
 
 ## 接入与兼容决定
 
-实查当前0.2.2-rc.1终端只有body/title注册，没有按键栏扩展槽。为避免替换整套终端或读取其他组件DOM，先用bridge.mjs给已安装的内置Client产物增加一个子Slot：`local.terminal.touch.keys`（list/session），owner props是`enabled:boolean`及`sendKey(key):boolean`。六种键名是left/up/down/right/escape/interrupt，不允许任意字符串写入。
+实查当前0.2.2-rc.1终端只有body/title注册，没有按键栏扩展槽。为避免替换整套终端或读取其他组件DOM，先用bridge.mjs给已安装的内置Client产物增加一个子Slot：`local.terminal.touch.keys`（list/session），owner props是`enabled:boolean`及`sendKey(key):boolean`。最初六种键名是left/up/down/right/escape/interrupt；2026-11-08在明确授权后扩展为八种，新增tab/vimQuit，不允许任意字符串写入。升级适配、备份与回滚见[终端桥升级手册](../terminal-bridge-upgrade.md)。
 
 桥保留原xterm与model的生命周期，方向键依据application cursor mode使用CSI/SS3，控制键走原xterm.input→onData→model.write。断开、隐藏、只读、进程结束时禁止发送，也不自动夺取输入权。纯用户终端键盘不开放为Agent工具，以免绕过Agent命令审批。
 
@@ -85,3 +85,11 @@ plugin_manager已移除独立包并应用根包1.4.0（application: applied、wa
 ## 仅保留工具箱入口（2026-11-07）
 
 按用户要求移除sidebar.panellist中的独立终端条目。工具箱终端卡片、pocket-kit.native-terminal主入口、原生导航时序、36px按键与键盘避让保持不变；不结束现有终端或修改会话数据。不改宿主文件、不卸载整包，仅构建并重新加载根客户端载体。相关注册回归确保侧栏终端为0、工具箱终端仍唯一。构建与18项针对性测试通过；根客户端载体重新启用返回applied，实时Inspect确认侧栏已无终端条目、工具箱仍有终端卡片。未卸载业务Host或操作用户终端。
+
+## Tab 与 Vim `:q`（2026-11-08）
+
+用户明确授权小改现有宿主桥。按键栏现为 Esc、Tab、单方向按钮、`:q`、Ctrl+C，仍是36px紧凑高度。新增固定编码 `tab` → `\t`、`vimQuit` → `\x1b:q\r`；后者先 Esc 再 `:q` 与回车，未保存时不强退、不自动保存，也不检测当前程序，**仅在 Vim 中使用**。在 shell 中误点也会发送这些字符。无任意文本/命令接口，所有原有可写/可见/连接/进程状态检查保持。
+
+首次只修改当前内置终端 `client.terminal.js` 的映射行。用户反馈Tab无反应后，经明确授权又给 `client.js` 添加绑定分块SHA256的版本注释并重载 `include:ui-sidebar-terminal`：DSH分块缓存依赖入口rev，仅重载工具箱不足以更新。缓存修复的17项针对测试通过、重载返回applied；本次未运行浏览器或发送真实终端字符，待用户刷新复测。未改会话机制、其他内置插件或专用终端适配。补丁脚本现默认只检查，显式 `--apply` 才写入，并提供按安装路径/版本/SHA256验证的备份及回滚。升级可能覆盖桥，不能自动照搬旧补丁；完整步骤及本次manifest见[升级适配与回滚手册](../terminal-bridge-upgrade.md)，已索引至AGENTS。
+
+25项针对性测试、根构建及资源/语法检查通过；客户端载体重载返回applied、warnings=[]。原GUI桌面、四种手机宽度浅色及320/390px暗色共7组按键栏检查通过，已看图；暗色375/430px未取得可见按键栏，未确认原因，不宣称完整实页验收。四宽度明暗8组隔离触屏点击/禁用/单行布局通过，没有向用户真实终端发送测试字符。全量测试154/155通过，唯一失败是未改动的首页测试仍将已有三个注册断言为两个；细节及升级/回滚步骤见上述手册。缓存修复后用户最终明确反馈“那个按键我测试没问题了”，按键功能通过用户实际验收；不据此宣称所有设备、软键盘及未完成的自动化布局配置均已验收。
