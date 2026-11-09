@@ -70,6 +70,52 @@ class SafetyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 server.create_file_url(str(link))
 
+    def test_queue_shuffle_preserves_current_timer_and_all_pending_entries(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        # Evaluate only the Runtime class, never the worker's startup/import side effects.
+        tree = ast.parse((ROOT / 'worker_bridge.py').read_text(encoding='utf-8'))
+        runtime = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'Runtime')
+        current, timer = object(), object()
+        songs = [object() for _ in range(120)]
+        pending = songs + [songs[0]]  # Repeated songs remain repeated.
+        app = SimpleNamespace(local_music_lock=asyncio.Lock(), current_song=current, play_queue=pending[:], timer_task=timer)
+        def reverse(queue):
+            self.assertTrue(app.local_music_lock.locked())
+            queue.reverse()
+        shuffle = Mock(side_effect=reverse)
+        scope = {'App': app, 'random': SimpleNamespace(shuffle=shuffle)}
+        exec(compile(ast.Module(body=[runtime], type_ignores=[]), '<fixture-runtime>', 'exec'), scope)
+        asyncio.run(scope['Runtime'].shuffle_queue())
+        self.assertEqual(app.play_queue, list(reversed(pending)))
+        self.assertIs(app.current_song, current)
+        self.assertIs(app.timer_task, timer)
+        shuffle.assert_called_once_with(app.play_queue)
+        for queue in [[], [songs[0]]]:
+            app.play_queue = queue[:]
+            asyncio.run(scope['Runtime'].shuffle_queue())
+            self.assertEqual(app.play_queue, queue)
+
+    def test_queue_shuffle_route_runs_authenticated_runtime_method(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock
+        tree = ast.parse((ROOT / 'worker_bridge.py').read_text(encoding='utf-8'))
+        handler = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'ApiHandler')
+        method = next(node for node in handler.body if isinstance(node, ast.FunctionDef) and node.name == 'do_POST')
+        operation = object()
+        shuffle = Mock(return_value=operation)
+        run = Mock()
+        scope = {'Runtime': SimpleNamespace(shuffle_queue=shuffle), 'run_async': run}
+        exec(compile(ast.Module(body=[method], type_ignores=[]), '<fixture-handler>', 'exec'), scope)
+        fake = SimpleNamespace(path='/queue/shuffle', authorized=lambda: True, read_json=lambda: {}, send_json=Mock())
+        scope['do_POST'](fake)
+        shuffle.assert_called_once_with()
+        run.assert_called_once_with(operation)
+        fake.send_json.assert_called_once_with(200, {'success': True})
+        fake.authorized = lambda: False
+        scope['do_POST'](fake)
+        self.assertEqual(shuffle.call_count, 1)
+
     def test_worker_control_auth_is_required_for_get_and_post(self):
         tree = ast.parse((ROOT / 'worker_bridge.py').read_text(encoding='utf-8'))
         handler = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'ApiHandler')

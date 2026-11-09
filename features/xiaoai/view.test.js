@@ -7,6 +7,11 @@ const source = await readFile(new URL('./view.js', import.meta.url), 'utf8');
 // Define functions only. No React hooks, DOM, browser, network or speaker actions run.
 const { createXiaoaiReadGate, xiaoaiReadbackAfterCommit } = vm.runInNewContext(`${source}\n({ createXiaoaiReadGate, xiaoaiReadbackAfterCommit });`, {});
 
+test('queue shuffle button uses live queue action and disables for unavailable or short queues', () => {
+  assert.match(source, /button\('打乱列表', \(\) => musicAction\('queue\/shuffle', \{\}, '待播列表已打乱，当前歌曲不变'\), unavailable \|\| \(profile\?\.queueSize \|\| 0\) < 2\)/);
+  assert.match(source, /打乱只调整全部待播歌曲的顺序，当前歌曲继续播放/);
+});
+
 test('retired announcement merge and UI are absent', () => {
   assert.doesNotMatch(source, /xiaoaiCombinedHistory|collection\.announcements|清空旧版记录|item\.legacy/);
 });

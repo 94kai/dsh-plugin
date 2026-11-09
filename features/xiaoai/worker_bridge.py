@@ -4,6 +4,7 @@ import hmac
 import asyncio
 import json
 import os
+import random
 import signal
 import sys
 import threading
@@ -159,6 +160,12 @@ class Runtime:
             await App._start_song_unlocked(first_song, trigger="网页播放列表")
 
     @classmethod
+    async def shuffle_queue(cls):
+        # Keep the current song and its timer untouched; shuffle the entire pending queue.
+        async with App.local_music_lock:
+            random.shuffle(App.play_queue)
+
+    @classmethod
     async def jump_queue(cls, index):
         position = int(index)
         async with App.local_music_lock:
@@ -224,6 +231,8 @@ class ApiHandler(BaseHTTPRequestHandler):
                 run_async(Runtime.play_path(str(body.get("path", "")), body.get("repeat", 1)))
             elif self.path == "/queue/play":
                 run_async(Runtime.play_paths(body.get("paths", []), body.get("repeat", 1)))
+            elif self.path == "/queue/shuffle":
+                run_async(Runtime.shuffle_queue())
             elif self.path == "/queue/jump":
                 run_async(Runtime.jump_queue(body.get("index", -1)))
             elif self.path == "/play-search":
