@@ -32,13 +32,54 @@ async function request(module, path, method = 'GET', payload) {
 }
 const base = '/api/modules/xiaoai-music/profiles/speaker-a';
 
-test('initialize is read-only and never starts workers or writes defaults', async t => {
+test('initialize without LAN consent is read-only and never starts workers or writes defaults', async t => {
   const { directory, music, assistant } = await fixture(t);
   assert.deepEqual(await readdir(join(directory, 'xiaoai-music')), ['config.json']);
   assert.deepEqual(await readdir(directory), ['xiaoai-music']);
   assert.equal(music.children.size, 0);
   assert.equal(assistant.state.controls.length, 0);
   assert.equal(music.moduleDir.includes('/features/xiaoai'), true);
+});
+
+test('consented initialize auto-starts every profile and isolates failures', async t => {
+  const { directory } = await fixture(t);
+  await writeFile(join(directory, 'xiaoai-music/config.json'), JSON.stringify({ profiles: [fixtureProfile, { ...fixtureProfile, id: 'speaker-b' }] }));
+  const music = new XiaoAiMusicModule({ dataDir: directory, env: { XIAOAI_ALLOW_LAN_UNAUTHENTICATED: 'true' } });
+  t.after(() => music.dispose());
+  const calls = [];
+  music.startOwned = async profile => { calls.push(profile.id); if (profile.id === 'speaker-a') throw new Error('FAKE_SECRET'); return { success: true }; };
+  await music.initialize();
+  assert.deepEqual(calls, ['speaker-a', 'speaker-b']);
+  const { result } = await request(music, '/api/modules/xiaoai-music/profiles');
+  assert.match(result.profiles[0].processError, /自动连接失败/);
+  assert.equal(JSON.stringify(result).includes('FAKE_SECRET'), false);
+  music.startOwned = async () => ({ success: true });
+  await music.start(music.profile('speaker-a'));
+  assert.equal(music.startErrors.has('speaker-a'), false);
+});
+
+test('auto-start opt-out preserves paused state despite LAN consent', async t => {
+  const { directory } = await fixture(t);
+  const music = new XiaoAiMusicModule({ dataDir: directory, env: { XIAOAI_ALLOW_LAN_UNAUTHENTICATED: 'true', XIAOAI_AUTO_START: 'false' } });
+  t.after(() => music.dispose());
+  music.start = () => { throw new Error('Must remain paused'); };
+  await music.initialize();
+  assert.equal(music.children.size, 0);
+});
+
+test('automatic startup retains private bind and port conflict checks', async t => {
+  const { directory } = await fixture(t);
+  for (const host of ['0.0.0.0', '127.0.0.1']) {
+    const music = new XiaoAiMusicModule({ dataDir: directory, env: { XIAOAI_ALLOW_LAN_UNAUTHENTICATED: 'true', XIAOAI_BIND_HOST: host } });
+    let probes = 0;
+    music.assertPortsAvailable = async () => { probes++; throw Object.assign(new Error('occupied'), { status: 409 }); };
+    await music.initialize();
+    assert.equal(probes, host === '0.0.0.0' ? 0 : 1);
+    assert.equal(music.children.size, 0);
+    assert.equal(music.startErrors.has('speaker-a'), true);
+    assert.deepEqual(await readdir(join(directory, 'xiaoai-music')), ['config.json']);
+    await music.dispose();
+  }
 });
 
 test('missing entire data directory remains absent after initialize', async t => {

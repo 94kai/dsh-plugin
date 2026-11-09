@@ -49,7 +49,7 @@
 - 主面板/侧栏 key：`pocket-kit.music`、`pocket-kit.xiaoai`；各有独立入口，页面内不互相切换。
 - Agent 的 `pocket_music` / `pocket_xiaoai` 先 help 发现具体操作，再 request；与 UI 共用业务方法。登录授权与下载器安装不开放给 Agent 工具。真实设备控制必须符合用户明确请求。
 - 查询请求取消会中止音乐搜索/刮削/标签读取的网络或子进程；已接收的下载任务归 Host，页面关闭不撤销入队。卸载会中止本实例任务并清理。
-- 小爱 worker 是业务必须的设备协议桥，不是替代 DSH GUI 的服务器；默认不开启，显式启动也不连接或接管其他进程的旧 worker。详细数据与验证见[迁移记录](music-xiaoai-migration.md)。
+- 小爱 worker 是业务必须的设备协议桥，不是替代 DSH GUI 的服务器；已确认局域网风险且未关闭自动启动时，Host 加载后自动连接；未确认风险仍暂停，始终不连接或接管其他进程的旧 worker。详细数据与验证见[迁移记录](music-xiaoai-migration.md)。
 
 ## 1.3.0 五模块扩展
 

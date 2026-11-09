@@ -9,7 +9,7 @@ export function apply(ctx){
    const {env}=await privateConfig();const playback=new XiaoAiMusicModule({projectDir,dataDir,env});
    await playback.initialize();playback.fnos=new FnosMusic({credentials:ctx.credentials});const assistant=new XiaoAiAssistantModule({dataDir,xiaoAiMusic:playback});await assistant.initialize();return {assistant,playback};
   },
-  help:{notes:'迁移后worker默认暂停，不自动连接旧服务。播放、音量、朗读和快捷控制会影响真实设备；只有用户明确请求时调用。先profiles取得id。网络兼容风险许可只能用户编辑本地配置，不由工具代为授权。',modules:{
+  help:{notes:'已确认局域网风险且未设置XIAOAI_AUTO_START=false时，加载后自动启动自有worker；不接管旧服务。播放、音量、朗读和快捷控制会影响真实设备；只有用户明确请求时调用。先profiles取得id。网络兼容风险许可只能用户编辑本地配置，不由工具代为授权。',modules:{
    playback:{prefix:'/profiles/<id>',routes:[
     ['GET','/profiles','音箱配置和本实例运行状态'],['POST','/profiles/<id>/worker/start','显式启动，受本地网络许可和端口冲突检查'],['POST','/profiles/<id>/worker/stop','停止本实例worker'],['PUT','/profiles/<id>','先GET取得profile，修改后提交完整可见配置'],
     ['GET','/profiles/<id>/search?q=<keyword>','曲库搜索'],['GET','/profiles/<id>/collection','playlist与飞牛favorites及授权/错误状态；未授权不回落本地收藏'],['POST','/profiles/<id>/playlist','{songs:[搜索结果],mode:append|replace}'],['DELETE','/profiles/<id>/playlist?path=<songPath>','移出播放列表'],['PUT','/profiles/<id>/favorites','{song,favorite:boolean}'],

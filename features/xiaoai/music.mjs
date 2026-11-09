@@ -26,6 +26,7 @@ export class XiaoAiMusicModule {
     this.desiredRunning = new Set();
     this.restartTimers = new Map();
     this.starting = new Map();
+    this.startErrors = new Map();
     this.pendingWrites = new Set();
     this.dataDir = path.join(dataDir, 'xiaoai-music');
     this.configFile = path.join(this.dataDir, 'config.json');
@@ -38,7 +39,7 @@ export class XiaoAiMusicModule {
   }
 
   async initialize() {
-    // Deliberately read-only: no mkdir, generated configs, indexing or subprocess.
+    // Load and validate persisted data before attempting any owned worker start.
     const config = await readPrivateJson(this.configFile, { profiles: [] });
     if (!config || !Array.isArray(config.profiles)) throw httpError('音箱配置格式无效；未覆盖原文件', 503);
     this.config = { ...config, profiles: config.profiles.map(profile => this.normalizeProfile(profile, profile)) };
@@ -52,6 +53,13 @@ export class XiaoAiMusicModule {
     this.library.playlists = Object.assign(Object.create(null), this.library.playlists);
     this.library.announcements = Object.assign(Object.create(null), this.library.announcements);
     await this.automation.initialize();
+    // Existing LAN consent is mandatory; false provides an explicit opt-out.
+    if (String(this.env.XIAOAI_ALLOW_LAN_UNAUTHENTICATED) === 'true' && String(this.env.XIAOAI_AUTO_START) !== 'false') {
+      for (const profile of this.config.profiles) {
+        try { await this.start(profile); }
+        catch { this.startErrors.set(profile.id, '音箱自动连接失败，请检查局域网绑定、端口占用及运行环境后手动重试'); }
+      }
+    }
   }
 
   normalizeProfile(input, previous = {}) {
@@ -163,7 +171,7 @@ export class XiaoAiMusicModule {
     if (this.starting.has(profile.id)) return this.starting.get(profile.id);
     const operation = this.startOwned(profile);
     this.starting.set(profile.id, operation);
-    try { return await operation; } finally { this.starting.delete(profile.id); }
+    try { const result = await operation; this.startErrors.delete(profile.id); return result; } finally { this.starting.delete(profile.id); }
   }
 
   async startOwned(profile) {
@@ -280,7 +288,7 @@ export class XiaoAiMusicModule {
     if (url.pathname === `${base}/profiles` && req.method === 'GET') {
       const profiles = await Promise.all(this.config.profiles.map(async profile => {
         try { return { ...this.publicProfile(profile), ...(await this.worker(profile, '/status', { timeout: 2500 })), online: true }; }
-        catch { return { ...this.publicProfile(profile), online: false, processError: this.children.get(profile.id)?.error || '音箱服务已暂停，需手动启动' }; }
+        catch { return { ...this.publicProfile(profile), online: false, processError: this.children.get(profile.id)?.error || this.startErrors.get(profile.id) || '音箱服务已暂停，需手动启动' }; }
       }));
       json(res, 200, { profiles }); return true;
     }

@@ -4,7 +4,15 @@
 
 「随身工具箱 → 小爱音箱」包含 **小爱播放 / 音响控制** 两个子视图。迁移来源是 Allinone 的 `xiaoai-music` 和 `xiaoai-assistant`，不是音乐下载模块。两子视图共用一个 `XiaoAiMusicModule` 实例及其设备连接，助手模块不另建 worker。
 
-默认仅读取本地数据，**所有 worker 暂停**。打开页面、读取状态、切换音箱、读取歌单不启动音箱、不播放、不启动自动化。手动启动须满足私密配置风险开关和可信私网绑定，并经 UI 确认。本文记录源码契约及 2026-11-07 的实际启用结果，不表示真实播放、语音指令或手机交互已验收。
+2026-11-09 起，经用户要求，**已确认局域网风险且未设置 `XIAOAI_AUTO_START=false` 时，Host 初始化自动启动全部配置音箱的自有 worker**，无需打开页面；未确认风险仍保持暂停。启动沿用可信私网绑定、端口冲突检查和卸载清理，不接管旧 Allinone。已有启用的定时/语音规则随 worker 生效，不恢复旧临时队列。手动停止在本次 Host 生命周期内保持暂停，重载后重新自动连接；特殊情况运行 Allinone 前先停用小爱 Host。以下 2026-11-07 默认暂停描述是历史记录，以本段为准。
+
+## 2026-11-09 自动连接变更与验证
+
+- 仅改本包后端，不修改风险许可、私人配置、DSH 宿主或 Allinone；未新增接口或持久数据字段。`XIAOAI_AUTO_START=false` 可由用户在私密配置关闭自动启动。
+- 全部配置和自动化校验完成后逐台调用原有 `start()`；单台启动失败不阻断其他设备和管理接口，状态显示脱敏错误，支持手动重试。不杀端口占用者，也不循环抢占冲突端口。
+- `node --check` 检查 music/host 通过；`node --test features/xiaoai/*.test.js` **35 项通过**，新增许可自动启动、关闭开关、失败隔离/脱敏/重试、私网与端口保护回归；`git diff --check` 通过。仅后端变更，无需重建客户端。
+- 仅禁用再启用 `include:pocket-kit-xiaoai`，返回 applied；新 help 已加载。未调用手动启动接口，随后读取两台均 `workerState=running`、`online=true`、`speakerConnected=true`，曲库各2739首，当前无播放/队列。
+- 未发送播放、播报或音量指令，未触发规则测试，未重启整个 DSH 或主机，未进行浏览器 UI 验证。重启后自动启动以初始化回归及本次 Host 重载验证为依据。
 
 ## 能力清单
 
@@ -47,7 +55,7 @@
 ```js
 const music = new XiaoAiMusicModule({ projectDir, dataDir, env });
 const assistant = new XiaoAiAssistantModule({ dataDir, xiaoAiMusic: music });
-await music.initialize();       // 只读本地配置；不创建目录、不生成worker、不启动服务
+await music.initialize();       // 校验配置后按风险许可与自动启动开关启动自有worker
 await assistant.initialize();  // 只读助手数据
 await music.handle(req, res, url);
 await assistant.handle(req, res, url);
