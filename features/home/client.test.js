@@ -19,7 +19,10 @@ test('homepage declares tool slot and exactly one footer entry, never a top side
   slots:{inject:(_key,fn)=>fn(),register:(meta,component)=>{registrations.push({meta,component});return()=>{};}},
   layout:{selectPanel:id=>nav.push(id),panelInfo:{getSnapshot:()=>({activePanelId:selected})}}
  });
- assert.equal(registrations.length,2);
+ assert.equal(registrations.length,3);
+ assert.equal(registrations.filter(item=>item.meta.name==='sidebar.footer.action').length,1);
+ assert.equal(registrations.filter(item=>item.meta.name==='conversation.session.header.utilities').length,1);
+ assert.equal(registrations.some(item=>item.meta.name==='sidebar.panellist'),false);
  const main=registrations.find(item=>item.meta.name==='main');
  assert.equal(main.meta.key,'pocket-kit.home');
  assert.equal(main.meta.children['local.pocket-kit.home.tool'].scope,'root');
@@ -48,6 +51,12 @@ test('toolbox stays Chinese and normalizes contributed cards by stable id',()=>{
  const card=renderCard({id:'file-manager',title:'Files',description:'English fallback',icon:'icon',onClick:()=>{opened=true;}});
  assert.equal(card.props['data-tool'],'file-manager');assert.equal(card.props['aria-label'],'文件，浏览、整理与传输文件');assert.equal(card.props.style['--tool-color'],'#6588d8');
  card.props.onClick();assert.equal(opened,true);
+});
+test('homepage no longer mounts connection status or its automatic probe',()=>{
+  assert.doesNotMatch(source,/h\(ConnectionStatus\b/);
+  const page=source.slice(source.indexOf('    function Page('),source.indexOf('    const headerCss'));
+  assert.doesNotMatch(page,/useConnection|probeConnection|pk-home-connection/);
+  assert.match(page,/'network-speed':\['连接测速'/);
 });
 test('home keeps mobile, private-link and safe external navigation constraints',()=>{
  assert.match(source,/44px/);assert.match(source,/safe-area-inset-bottom/);
