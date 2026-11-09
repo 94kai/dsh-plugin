@@ -37,6 +37,7 @@
 - 新迁入：[文件](docs/features/file-manager.md) · [进京证](docs/features/beijing-pass.md) · [健康](docs/features/health.md) · [终端](docs/features/terminal.md) · [记账单](docs/features/bill-manager.md)。
 - [右侧终端辅助按键](docs/features/terminal-touch-keys.md)：同包功能与本机内置终端扩展桥，DSH升级兼容限制。
 - [DSH 账号登录与切换](docs/dsh-account-login.md)：远程域名登录报 `account: protocol` 的原因、SSH 隧道登录步骤、错误对照与 SSH 转发回滚。
+- [飞牛 DSH 网关清理记录](docs/features/fnos-gateway.md)：专用源码与构建产物已撤回；飞牛应用待管理员卸载，实际 DSH、工具箱和 Lucky 保留。
 - [五模块迁移记录](docs/utilities-migration.md)：数据核验、安装状态和功能差异。
 - [音乐与小爱迁移记录](docs/music-xiaoai-migration.md)：数据保留、兼容路径、设备默认暂停及验证边界。涉及真实音箱前必读。
 - [功能文档模板](docs/features/_template.md)：新增功能时复制，记录 API、数据、重要决策、生命周期及验证限制。
