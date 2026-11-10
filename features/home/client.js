@@ -28,6 +28,11 @@ window.__ModuleLoader__.load({
     function useLinks(){
       const [state,setState]=React.useState({loading:true,error:false,items:[]}),[version,setVersion]=React.useState(0);
       React.useEffect(()=>{
+        const reload=()=>setVersion(value=>value+1);
+        window.addEventListener('pocket-kit:bookmarks-changed',reload);
+        return()=>window.removeEventListener('pocket-kit:bookmarks-changed',reload);
+      },[]);
+      React.useEffect(()=>{
         const controller=new AbortController();setState(current=>({...current,loading:true,error:false}));
         fetch(new URL('api/shortcuts/bookmarks',document.baseURI),{credentials:'same-origin',cache:'no-store',signal:controller.signal})
           .then(async response=>{if(!response.ok)throw new Error();const value=await response.json();if(!Array.isArray(value.items))throw new Error();if(!controller.signal.aborted)setState({loading:false,error:false,items:value.items});})
