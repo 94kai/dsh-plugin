@@ -11,8 +11,10 @@ test('built client registers only Pocket Kit and composes all feature entries', 
   assert.equal(modules.length, 1);
   assert.equal(modules[0].id, '@local/pocket-kit');
   const plugin = modules[0].factory(name => {
-    assert.equal(name, 'react');
-    return { createElement: (type, props) => ({ type, props }) };
+    if (name === 'react') return { createElement: (type, props) => ({ type, props }) };
+    if (name === 'react-dom') return { createPortal: node => node };
+    assert.equal(name, '@deepseek-ai/dsh-client-ui-primitives');
+    return {};
   });
   const registrations = [], disposals = [], selectedPanels = [];
   plugin.apply({
@@ -21,9 +23,10 @@ test('built client registers only Pocket Kit and composes all feature entries', 
     slots: { inject: (key, callback) => callback(), register: (meta, component) => { registrations.push({ meta, component }); return () => {}; } },
     layout: { panelInfo: { getSnapshot: () => ({ activePanelId: null }) }, selectPanel(id) {selectedPanels.push(id);} },
   });
-  assert.equal(registrations.length, 23);
+  assert.equal(registrations.length, 25);
   const header = registrations.filter(({meta})=>meta.name==='conversation.session.header.utilities');
-  assert.equal(header.length,1);
+  assert.equal(header.length,2);
+  assert.equal(header[1].meta.id,'pocket-kit.aside-note');
   assert.equal(header[0].meta.id,'pocket-kit-home');
   assert.equal(typeof header[0].component().props.open,'function');
   header[0].component().props.open();
@@ -41,15 +44,15 @@ test('built client registers only Pocket Kit and composes all feature entries', 
   assert.doesNotMatch(source,/createTerminalView|startFreshTerminal|runTerminalStartup|TERMINAL_STARTUP/);
   for (const dispose of disposals.reverse()) dispose();
 });
-test('package exports one client and nine independent host entries', async () => {
+test('package exports one client and ten independent host entries', async () => {
   const pkg = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
   assert.equal(pkg.name, '@local/pocket-kit');
-  for (const key of ['./client', './shortcuts', './network-speed', './outing-checklist', './music', './xiaoai', './file-manager', './health', './beijing-pass', './bill-manager']) assert.ok(pkg.exports[key]);
+  for (const key of ['./client', './shortcuts', './network-speed', './outing-checklist', './music', './xiaoai', './file-manager', './health', './beijing-pass', './bill-manager', './aside-note']) assert.ok(pkg.exports[key]);
   assert.ok(!pkg.exports['./terminal']);
   assert.ok(!pkg.files.some(path=>path.startsWith('features/terminal/')));
   assert.ok(pkg.files.every(path => !path.includes('.local') && !path.includes('bookmarks.json')));
   const patch = await readFile(new URL('cordis.patch.yml', root), 'utf8');
-  assert.equal((patch.match(/- id:/g) || []).length, 10);
+  assert.equal((patch.match(/- id:/g) || []).length, 11);
 });
 test('mobile styles include touch sizing and constrained dialogs', async () => {
   for (const path of ['features/shortcuts/client.js', 'features/network-speed/client-entry.js', 'features/outing-checklist/client.js']) {

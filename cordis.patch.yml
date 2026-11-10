@@ -29,3 +29,6 @@
     - id: pocket-kit-bill-manager
       name: '@local/pocket-kit/bill-manager'
       config: {}
+    - id: pocket-kit-aside-note
+      name: '@local/pocket-kit/aside-note'
+      config: {}

@@ -1,0 +1,8 @@
+{
+  "package": "dsh-aside-note",
+  "version": "1.1.0",
+  "source": "https://github.com/Rayle8/dsh-aside-note",
+  "clientSha256": "b7705c3b54d6b1f22b35b915afb99e95e9eefa7fa0c2ca2e0ef24c679eb02061",
+  "cssSha256": "62893b5ab58a70fb846064c480e16360a49a93b589abdb9bf966056911186586",
+  "namespace": "dsh-an -> pk-an; --an- -> --pkan-"
+}

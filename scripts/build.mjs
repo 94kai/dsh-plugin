@@ -10,6 +10,7 @@ const entries = [
   ['media', 'client.js'],
   ['utilities','client.js'],
   ['terminal-touch-keys','client.js'],
+  ['aside-note', 'client.js'],
 ];
 const viewSources = Object.fromEntries(await Promise.all(['music', 'xiaoai'].map(async name => [name, await readFile(new URL(`features/${name}/view.js`, root), 'utf8')])));
 const homeStartup = await readFile(new URL('features/home/startup.js', root), 'utf8');
@@ -24,6 +25,14 @@ for (const [name, file] of entries) {
     const marker = '/* KIT_CHROME */';
     if (source.split(marker).length !== 2) throw new Error(`Expected one kit chrome marker in ${name}`);
     source = source.replace(marker, () => kitChrome);
+  }
+  if (name === 'aside-note') {
+    const model = (await readFile(new URL('features/aside-note/client-model.js', root), 'utf8')).replace(/^export /gm, '');
+    source = source.replace('/* NOTES_MODEL */', () => model);
+    const originalUi = await readFile(new URL('features/aside-note/original-ui.js', root), 'utf8');
+    const originalCss = await readFile(new URL('features/aside-note/original.css', root), 'utf8');
+    source = source.replace('/* NOTES_ORIGINAL_UI */', () => originalUi);
+    source = source.replace("/* NOTES_ORIGINAL_CSS */ ''", () => JSON.stringify(originalCss));
   }
   if (name === 'terminal-touch-keys') {
     const engine=(await readFile(new URL('features/terminal-touch-keys/viewport.js',root),'utf8')).replace(/^export /gm,'');

@@ -61,4 +61,8 @@ terminal-touch-keys工厂和viewport辅助逻辑纳入根构建，与已有六�
 
 ## 1.6.0 终端统一
 
-旧轻量terminal Host退役，当前为9个业务Host和1个客户端载体。工具箱终端由terminal-touch-keys工厂贡献，指向与侧栏相同的pocket-kit.native-terminal；utilities工厂只内联文件、进京证、健康、记账单四个视图。原tmux和配置数据保留，自动t命令未部署且已取消。
+旧轻量terminal Host退役，该版本为9个业务Host和1个客户端载体。工具箱终端由terminal-touch-keys工厂贡献，指向与侧栏相同的pocket-kit.native-terminal；utilities工厂只内联文件、进京证、健康、记账单四个视图。原tmux和配置数据保留，自动t命令未部署且已取消。
+
+## 1.7.0 旁边记服务端化
+
+旁边记客户端工厂接入唯一载体，使用会话顶部和 shell.overlay 正式 Slot；同包新增 `aside-note` Host 子路径，共10个业务Host与1个客户端载体。便笺、草稿、转发标记和设置保存到独立 `.local/data/aside-note/notes.json`，通过带版本的 Connection API 访问，不向浏览器持久化。原独立插件保留，旧浏览器数据通过显式迁移合并。详见[旁边记](features/aside-note.md)。

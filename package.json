@@ -1,6 +1,6 @@
 {
   "name": "@local/pocket-kit",
-  "version": "1.6.0",
+  "version": "1.7.1",
   "private": true,
   "type": "module",
   "description": "随身工具箱：文件、进京证、健康、终端、记账单、音乐与日常工具",
@@ -35,7 +35,9 @@
     "./beijing-pass/icon": "./features/beijing-pass/icon.svg",
     "./bill-manager": "./features/bill-manager/host.mjs",
     "./bill-manager/locale/*.json": "./features/bill-manager/locale/*.json",
-    "./bill-manager/icon": "./features/bill-manager/icon.svg"
+    "./bill-manager/icon": "./features/bill-manager/icon.svg",
+    "./aside-note": "./features/aside-note/host.js",
+    "./aside-note/locale/*.json": "./features/aside-note/locale/*.json"
   },
   "files": [
     "index.js",
@@ -83,7 +85,12 @@
     "features/bill-manager/icon.svg",
     "features/health/columns.json",
     "features/terminal-touch-keys/bridge.mjs",
-    "features/terminal-touch-keys/sidebar-bridge.mjs"
+    "features/terminal-touch-keys/sidebar-bridge.mjs",
+    "features/aside-note/host.js",
+    "features/aside-note/store.js",
+    "features/aside-note/locale/*.json",
+    "features/aside-note/LICENSE.aside-note",
+    "features/aside-note/original-source.json"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
@@ -103,7 +110,9 @@
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-sidebar-terminal",
-        "@deepseek-ai/dsh-client-ui-sidebar-right"
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-workspace"
       ]
     }
   },

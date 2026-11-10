@@ -35,6 +35,7 @@
 - [移动端规范](docs/mobile.md)：手机主用的布局、触控、键盘与验收要求；修改 UI 前必读。
 - 功能：[工具箱导航](docs/features/home.md) · [快捷访问](docs/features/shortcuts.md) · [连接测速](docs/features/network-speed.md) · [出门清单](docs/features/outing-checklist.md) · [音乐](docs/features/music.md) · [小爱音箱](docs/features/xiaoai.md)。
 - 新迁入：[文件](docs/features/file-manager.md) · [进京证](docs/features/beijing-pass.md) · [健康](docs/features/health.md) · [终端](docs/features/terminal.md) · [记账单](docs/features/bill-manager.md)。
+- [旁边记](docs/features/aside-note.md)：工作区/会话便笺、服务端持久化、原浏览器数据一次性合并与卸载前核对。
 - [右侧终端辅助按键](docs/features/terminal-touch-keys.md)：同包功能与本机内置终端扩展桥，DSH升级兼容限制。
 - [DSH 账号登录与切换](docs/dsh-account-login.md)：远程域名登录报 `account: protocol` 的原因、SSH 隧道登录步骤、错误对照与 SSH 转发回滚。
 - [飞牛 DSH 网关清理记录](docs/features/fnos-gateway.md)：专用源码与构建产物已撤回；飞牛应用待管理员卸载，实际 DSH、工具箱和 Lucky 保留。
