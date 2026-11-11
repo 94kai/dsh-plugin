@@ -44,6 +44,32 @@ npm run verify # 完整执行以上步骤
 
 更新客户端后先运行构建，再按安装结果重新加载并刷新原 GUI；Host 更新若要求重启，应重启既有 DSH 服务。没有验证同一 checkout 的开发 watcher 时，不承诺热更新，也不启动替代服务器。
 
+## DSH 的 PM2 启动与重启
+
+仓库根目录的 [dsh.sh](dsh.sh) 和 [dsh-rescue.sh](dsh-rescue.sh) 是 **PM2 首次启动脚本**，不是日常重启脚本：
+
+| 脚本 | PM2 进程名 | DSH profile | 端口 |
+| --- | --- | --- | --- |
+| [dsh.sh](dsh.sh) | `dsh` | `web` | `2007` |
+| [dsh-rescue.sh](dsh-rescue.sh) | `dsh-rescue` | `rescue` | `2008` |
+
+首次在仓库根目录执行所需脚本，确认启动正常后保存进程列表：
+
+```sh
+sh ./dsh.sh
+sh ./dsh-rescue.sh  # 需要救援实例时执行
+pm2 save
+```
+
+保存后，后续每次直接按进程名重启即可，无需重复运行首次启动脚本：
+
+```sh
+pm2 restart dsh
+pm2 restart dsh-rescue
+```
+
+脚本固定使用本机 fnm 的 Node.js `v26.7.0` 路径，通过 `npx --yes @deepseek-ai/dsh` 启动，并指定 `--no-open`。迁移机器或变更 Node.js 安装路径时需同步调整脚本；修改脚本不会自动更新 PM2 已保存的启动配置。`pm2 save` 保存进程列表，不等于配置系统开机自启。本次仅核对脚本与 Shell 语法，未执行启动、保存或重启操作。
+
 ## 私人配置
 
 私人书签放在 `.local/bookmarks.json`，该目录被 Git 忽略且不进入发布文件清单。全新配置可从 [示例](features/shortcuts/bookmarks.example.json) 复制；已有文件不要覆盖。缺少书签文件时显示空列表。
