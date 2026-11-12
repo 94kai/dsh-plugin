@@ -68,6 +68,7 @@ window.__ModuleLoader__.load({
     return {inject:['slots','layout','locale'],apply(ctx){
       ctx.effect(()=>ctx.locale.register(NS,{zh:dictionaries.zh,en:dictionaries.zh}));
       ctx.effect(()=>kitTrackLastPanel(ctx));
+      ctx.effect(()=>trackHomeOpen(ctx,PANEL));
       ctx.slots.inject('main',()=>{
         const dispose=ctx.slots.register({name:'main',key:PANEL,locale:NS,children:{'local.pocket-kit.home.tool':{kind:'list',scope:'root'}}},props=>h(Page,{...props,open:id=>ctx.layout.selectPanel(id),chat:()=>ctx.layout.selectPanel(null)}));
         const stopStartup=mountHomeStartup(ctx,PANEL);

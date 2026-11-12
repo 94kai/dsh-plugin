@@ -4,7 +4,8 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
 const chrome=await readFile(new URL('../shared/chrome.js',import.meta.url),'utf8');
-const source=(await readFile(new URL('./client.js',import.meta.url),'utf8')).replace('/* HOME_STARTUP */',()=> 'function mountHomeStartup(){return ()=>{};}').replace('/* KIT_CHROME */',()=>chrome);
+const startup=await readFile(new URL('./startup.js',import.meta.url),'utf8');
+const source=(await readFile(new URL('./client.js',import.meta.url),'utf8')).replace('/* HOME_STARTUP */',()=>startup).replace('/* KIT_CHROME */',()=>chrome);
 function setup(){
  let definition;
  vm.runInNewContext(source,{window:{__ModuleLoader__:{load:value=>{definition=value;}}}});
@@ -67,7 +68,7 @@ test('home keeps mobile, private-link and safe external navigation constraints',
  assert.match(source,/credentials:'same-origin'/);
  assert.match(source,/item\.iconDataUrl/);
  assert.doesNotMatch(source,/item\.notes/);
- // The only browser persistence is the non-sensitive last-panel id.
+ // Browser persistence contains only a non-sensitive panel id and toolbox open flag.
  assert.match(source,/KIT_LAST_KEY = 'pocket-kit\.last-panel\.v1'/);
  assert.doesNotMatch(source,/sessionStorage|document\.cookie|indexedDB/);
 });
