@@ -6,7 +6,6 @@ const KIT_PANELS = new Set([
   'pocket-kit.home',
   'pocket-kit.music',
   'pocket-kit.xiaoai',
-  'pocket-kit.file-manager',
   'pocket-kit.health',
   'pocket-kit.beijing-pass',
   'pocket-kit.bill-manager',

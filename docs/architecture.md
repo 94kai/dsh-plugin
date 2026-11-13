@@ -53,7 +53,7 @@
 
 ## 1.3.0 五模块扩展
 
-新增独立Host子路径 file-manager、health、beijing-pass、terminal、bill-manager；共10个业务Host和1个客户端载体。客户端 utilities 工厂显式内联五个独立 view.js，业务后端仍按模块隔离。utility-host复用FeatureService，并为原始上传/下载提供认证路由。详见[五模块迁移记录](utilities-migration.md)。
+新增独立Host子路径 file-manager、health、beijing-pass、terminal、bill-manager；共10个业务Host和1个客户端载体。客户端 utilities 工厂显式内联五个独立 view.js（file-manager 已于 1.8.0 移除，现为9个Host），业务后端仍按模块隔离。utility-host复用FeatureService，并为原始上传/下载提供认证路由。详见[五模块迁移记录](utilities-migration.md)。
 
 ## 1.4.0 原生终端增强合包
 
@@ -61,8 +61,12 @@ terminal-touch-keys工厂和viewport辅助逻辑纳入根构建，与已有六�
 
 ## 1.6.0 终端统一
 
-旧轻量terminal Host退役，该版本为9个业务Host和1个客户端载体。工具箱终端由terminal-touch-keys工厂贡献，指向与侧栏相同的pocket-kit.native-terminal；utilities工厂只内联文件、进京证、健康、记账单四个视图。原tmux和配置数据保留，自动t命令未部署且已取消。
+旧轻量terminal Host退役，该版本为9个业务Host和1个客户端载体。工具箱终端由terminal-touch-keys工厂贡献，指向与侧栏相同的pocket-kit.native-terminal；utilities工厂只内联进京证、健康、记账单三个视图（文件管理已于 1.8.0 移除）。原tmux和配置数据保留，自动t命令未部署且已取消。
 
 ## 1.7.0 旁边记服务端化
 
 旁边记客户端工厂接入唯一载体，使用会话顶部和 shell.overlay 正式 Slot；同包新增 `aside-note` Host 子路径，共10个业务Host与1个客户端载体。便笺、草稿、转发标记和设置保存到独立 `.local/data/aside-note/notes.json`，通过带版本的 Connection API 访问，不向浏览器持久化。原独立插件保留，旧浏览器数据通过显式迁移合并。详见[旁边记](features/aside-note.md)。
+
+## 1.8.0 移除文件管理
+
+按用户要求删除文件管理：`features/file-manager/` 移出仓库，根 `package.json` 去掉对应导出与打包条目，`cordis.patch.yml` 删除 `pocket-kit-file-manager`，Host 条目降为九个；utilities 工厂只保留进京证、健康、记账单三个视图，首页去掉文件卡片，Agent 工具 `pocket_file_manager` 不再注册。`.local/data/file-manager/` 与用户文件均保留，不再有入口读取。详见[移除记录](features/file-manager.md)。

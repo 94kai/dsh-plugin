@@ -17,9 +17,6 @@
     - id: pocket-kit-xiaoai
       name: '@local/pocket-kit/xiaoai'
       config: {}
-    - id: pocket-kit-file-manager
-      name: '@local/pocket-kit/file-manager'
-      config: {}
     - id: pocket-kit-health
       name: '@local/pocket-kit/health'
       config: {}

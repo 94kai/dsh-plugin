@@ -49,8 +49,8 @@ test('toolbox stays Chinese and normalizes contributed cards by stable id',()=>{
  assert.equal(dictionaries.zh.title,'工具箱');assert.equal(dictionaries.en.title,'工具箱');
  const component=registrations.find(r=>r.meta.name==='main').component;
  const element=component({t:key=>dictionaries.en[key],renderSlot:(_key,props)=>{renderCard=props.renderCard;return [];}});element.type(element.props);
- const card=renderCard({id:'file-manager',title:'Files',description:'English fallback',icon:'icon',onClick:()=>{opened=true;}});
- assert.equal(card.props['data-tool'],'file-manager');assert.equal(card.props['aria-label'],'文件，浏览、整理与传输文件');assert.equal(card.props.style['--tool-color'],'#6588d8');
+ const card=renderCard({id:'health',title:'Health',description:'English fallback',icon:'icon',onClick:()=>{opened=true;}});
+ assert.equal(card.props['data-tool'],'health');assert.equal(card.props['aria-label'],'健康，记录家人的健康点滴');assert.equal(card.props.style['--tool-color'],'#d17b83');
  card.props.onClick();assert.equal(opened,true);
 });
 test('homepage no longer mounts connection status or its automatic probe',()=>{

@@ -1,49 +1,24 @@
-# 文件管理（1.3.0）
+# 文件管理（1.3.0 引入，1.8.0 移除）
 
-## 目的、API 与数据
+## 移除记录（2026-11-13）
 
-保留原目录入口、收藏、分享记录；管理 `/config`、`/entries?root=&path=&hidden=`、`/text`、`/favorites`、`/shares`、`/directory`、`/entry`。下载走已认证的 GET `/api/pocket-kit/file-manager/download?root=&path=`，上传为带 X-Pocket-Kit 的 POST `/api/pocket-kit/file-manager/upload?root=&path=&name=`，流式上限1GiB且不覆盖同名文件；原系统10GiB上限未沿用。文本预览只支持512KiB内UTF-8；`.csv` 文件在侧栏预览中使用内置表格展示，复用该文本读取上限。列表最多2000项。
+用户确认“文件管理”已无用途，按最小范围删除，未改动其他功能与宿主。
 
-`.local/data/file-manager/` 保存 config、favorites、shares；目录实际文件继续使用原物理位置，不复制整块硬盘或改文件 inode。根 ID 保留，使收藏和分享记录仍能定位。目录更新校验 revision、真实目录存在；路径使用 realpath 限定根范围，外逃符号链接不可读取。删除根目录被拒绝，其他删除需确认。
+- 代码：`features/file-manager/`（Host、后端、view、测试、图标、locale）移出仓库，暂存于忽略目录 `.local/removed/file-manager/`，需要可原样恢复。
+- 构建与接入：`features/utilities/client.js` 去掉视图内联、工具卡片与 `file-manager` 语言项；`scripts/build.mjs` 不再内联该视图；`features/home/client.js` 去掉卡片配色；`features/shared/chrome.js` 去掉 `pocket-kit.file-manager` 面板键（旧 localStorage 值回退到工具箱首页）；`features/utilities/messages.json` 删除该页专用文案。
+- Host：根 `package.json` 移除 `./file-manager` 导出与打包条目，描述去掉“文件”；`cordis.patch.yml` 删除 `pocket-kit-file-manager`，Host 条目由十个降为九个。Agent 工具 `pocket_file_manager` 随之不再注册。
+- 数据：`.local/data/file-manager/`（config、favorites、shares）与所有被管理的实际文件均未删除，只是不再有入口读取。原匿名分享服务不受影响。
 
-## 重要决策与生命周期
+## 验证
 
-不把旧匿名分享服务直接开放到 DSH：记录保留，当前分享下载仍要求 DSH 登录。旧链接继续归原项目管理，本迁移不改变其服务。不要将这里的下载链接当作新的匿名分享链接。Agent 文件写入/目录授权/分享修改仅 UI；Agent 应使用遵守 DSH 文件沙箱的原生工具。
+Node v26.7.0：`npm run verify` 通过（build、check、209 项测试）；`dist/client.js` 已无 `file-manager` / `pk-files-page` / `pocket_file_manager` 残留；bundle 测试更新为 24 个注册、10 个 `- id:`。未做浏览器/实页验收。
 
-收藏写入串行、配置原子替换；传输取消释放流/句柄，Host卸载中止本模块流而不删除用户文件。临时上传只清理本次创建的临时文件。文件系统外部进程并发替换路径不具备内核级 openat 隔离，故不应将根目录交给不可信本机用户管理。
+## 历史说明（已被移除的实现）
 
-## 共同接入与移动端
+原功能提供 `/config`、`/entries`、`/text`、`/favorites`、`/shares`、`/directory`、`/entry` 接口，下载 `GET /api/pocket-kit/file-manager/download`，上传 `POST /api/pocket-kit/file-manager/upload`（1 GiB 上限、不覆盖同名文件）；凭据与目录授权只走 UI，分享记录保留但 DSH 下载仍需登录。这些接口随本次移除不再可用。
 
-客户端由 `features/utilities/client.js` 装配 React 页面，不嵌入旧 HTML、不另起服务器。工具箱卡片打开 `pocket-kit.file-manager`；Host 条目为 `pocket-kit-file-manager`。管理请求走已认证的 `POST /api/pocket-kit/file-manager`，JSON envelope 为 `{path,method,body}`，要求 `X-Pocket-Kit: 1` 和同源 JSON。路径限制在功能内部。Agent 工具 `pocket_file_manager` 先 help 发现接口，与 UI 共用 FeatureService；权限授予、凭据和真实终端命令只在 UI。
+## 部署（2026-11-13）
 
-采用主题色、卡片分组、44px 控件、16px 输入、可换行长文、安全区底部留白和局部滚动表格；加载、空列表、错误和手动重试均有入口。最新浏览器与手机模拟验收见文末；模拟器不替代真实手机、软键盘和安全区验收。
+根包在 `~/.dsh/profiles/web` 中为 `link:` 安装，Host 条目直接来自仓库 `cordis.patch.yml`；`dsh plugin`/重装不需要，按用户指示 `pm2 restart dsh`（pid 1390599，重启次数 2）后生效。离线 `dsh --profile web --dump-config` 确认组合配置含 9 个 pocket-kit 条目且无 `pocket-kit-file-manager`；三条 profile 层 warning（`dsh-context`、`pocket-kit-terminal`、`better-workspace-file-manager` not found）为既有问题，与本次移除无关。`dist/client.js` 无 `file-manager` 残留。
 
-## 验证与限制（2026-11-07）
-
-Node v26.7.0：`npm run verify` 104 项通过，其中新增隔离临时数据测试覆盖健康版本冲突、文件越界/符号链接/不覆盖上传/Range、凭据不回显/迁移自动任务暂停、终端参数边界、账单规则和 UI/Agent 共用入口。正式数据只做复制与一致性核验，没有对真实业务做写入测试。安装和实时注册结果见[迁移记录](../utilities-migration.md)。
-
-补充：安全媒体预览支持PNG/JPEG/GIF/WebP、音视频和PDF，走已认证下载路由的preview参数；HTML/SVG不作为同源活动内容运行。取消上传不得发布残缺目标；删除符号链接只删除链接本身，已补回归测试。
-
-## 文件管理器界面调整（2026-11-07）
-
-- 将卡片表单式列表调整为目录侧栏、收藏夹、面包屑和主文件区；760px 以下侧栏变为顶部目录切换，文件元信息收进名称下方。提供列表/网格、名称/最近修改/大小排序、当前目录搜索、上一级、文件类型图标；文件夹始终排在文件前。
-- 上传和新建固定在工具栏，隐藏文件与历史分享放入展开区；每项的下载、预览、删除收进显式“更多”菜单，支持 Escape 关闭。收藏与目录授权保留，删除仍需不可撤销确认。导航成功才替换目录状态，并清空搜索；失败保留原列表并提供重试。
-- 仅调整本包文件客户端；API、上传限制、实际文件位置、权限及正式数据均未改动，不新增宿主补丁或独立服务。
-- 验证：Node v26.7.0，`npm run build`、`npm run check` 通过；`node --test features/file-manager/view.test.js tests/utilities.test.js tests/bundle.test.js` 共14项通过。`node features/file-manager/dom-check.mjs` 使用现有外部 happy-dom/React 依赖，通过真实 React 挂载、视图切换、目录导航、文本预览、新建取消、删除确认、错误重试及设置开关；均为虚构数据，不访问正式文件。
-- 初轮可选 浏览器检查脚本（现已移除） 因缺少 Chromium 未能启动；用户随后提供完整浏览器ZIP，后续实际结果见下一节。模拟 DOM 不替代浏览器布局。
-- 部署：根包仍为链接安装，仅停用/启用客户端载体 `include:pocket-kit`，管理返回均为 `applied`；未重装整包、未重启业务 Host。没有 `dev:web` watcher，不承诺自动热更新。初轮未登录探测返回401；后续用户明确授权登录后完成实页检查，见下一节。
-
-## 手机首屏压缩与实页验收（2026-11-07）
-
-- 手机改为单行目录下拉与按需收藏夹；导航、新建/上传图标在一行，搜索一行，排序/视图/收藏/更多在一行，文件列表直接接在下方。显示隐藏文件、分享记录与目录设置收进“更多”。桌面保留目录侧栏、文字动作和单行筛选栏。
-- 修复实页样式冲突：显式限制排序下拉宽度，并重置本模块菜单 `details` 的继承间距，避免工具栏和文件行被撑高。样式限定 `.pk-files-page` / `.pk-f`，不修改宿主内置插件；明暗背景跟随宿主，紫色局部强调与文件类型配色独立。
-- 固定中文界面、月/日格式日期；目录入口名称与文件名是用户数据，不擅自翻译或改名。API、正式文件、配置授权与删除确认规则均未改动。
-- `npm run verify` 构建、检查和133项测试通过；`node features/file-manager/dom-check.mjs` 通过；当时的浏览器检查脚本（现已移除） 通过真实Chromium隔离交互、错误重试、删除取消、320/375/390/430/1100px溢出与44px触控检查，并新增工具栏/首行高度回归。写入动作均只使用虚构数据。
-- 在原GUI授权登录后，已截图并查看桌面1440px与手机移动UA/触屏320、375、390、430px，另查390px暗色；各页宽度等于可滚动宽度，无横向溢出、无pageerror。实页桌面筛选栏69px、手机115px，手机首文件行约位于页面内容顶部325px；目录切换和菜单不再把列表挤到首屏底部。
-- 客户端载体重新加载返回 `applied`，新打开的原GUI已确认新版样式。未改正式业务数据或重启业务Host。截图与凭据不进入代码或发布包；真实手机Safari、软键盘、安全区、系统大字体及媒体播放仍未验收。
-
-## CSV 侧栏预览（2026-11-13）
-
-- `.csv` 文件在现有文件预览区域以内置表格展示，不运行宿主原始预览；支持固定表头、拖拽列宽（72–720px）、逐列文本筛选、列排序及全局搜索。解析支持 UTF-8 BOM、引号包裹字段、字段内逗号/换行和双引号转义；短行补空值。
-- 数据仍经既有安全文本接口读取，限制为512KiB UTF-8；没有新增 API、持久化或宿主补丁。超限、非 UTF-8 文件仍沿用文本接口错误边界。列筛选为包含匹配，排序按中文 locale 数值友好文本序。
-- 验证：`node --test features/file-manager/view.test.js tests/utilities.test.js tests/bundle.test.js`（15项）、`npm run build`、`npm run check` 均通过；本次未执行浏览器/实页验收，移动端实际布局与拖拽手感仍待验证。
+限制：DSH 鉴权下未登录只能得到 401，本次未登录，因此没有实页确认卡片消失和路由已注销；用户刷新原 GUI 后仍需目视确认首页只剩其他工具卡片。

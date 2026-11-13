@@ -18,7 +18,7 @@ const homeStartup = await readFile(new URL('features/home/startup.js', root), 'u
 const kitChrome = await readFile(new URL('features/shared/chrome.js', root), 'utf8');
 const kitChromeUsers = new Set(['home', 'shortcuts', 'outing-checklist', 'media', 'utilities', 'terminal-touch-keys']);
 const awaitedMessages = await readFile(new URL('features/utilities/messages.json',root),'utf8');
-const utilityViews = Object.fromEntries(await Promise.all(['health','file-manager','beijing-pass','bill-manager'].map(async name=>[name,await readFile(new URL(`features/${name}/view.js`,root),'utf8')])));
+const utilityViews = Object.fromEntries(await Promise.all(['health','beijing-pass','bill-manager'].map(async name=>[name,await readFile(new URL(`features/${name}/view.js`,root),'utf8')])));
 const factories = [];
 for (const [name, file] of entries) {
   let source = await readFile(new URL(`features/${name}/${file}`, root), 'utf8');
@@ -48,7 +48,7 @@ for (const [name, file] of entries) {
   }
   if (name === 'utilities') {
     source=source.replace('/* UTILITY_MESSAGES */',()=>JSON.stringify(JSON.parse(awaitedMessages)).slice(1,-1));
-    for (const feature of ['health','file-manager','beijing-pass','bill-manager']) {
+    for (const feature of ['health','beijing-pass','bill-manager']) {
       const marker = `/* ${feature.toUpperCase().replaceAll('-','_')}_VIEW */`;
       source = source.replace(marker, () => utilityViews[feature]);
     }
