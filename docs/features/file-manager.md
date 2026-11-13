@@ -2,7 +2,7 @@
 
 ## 目的、API 与数据
 
-保留原目录入口、收藏、分享记录；管理 `/config`、`/entries?root=&path=&hidden=`、`/text`、`/favorites`、`/shares`、`/directory`、`/entry`。下载走已认证的 GET `/api/pocket-kit/file-manager/download?root=&path=`，上传为带 X-Pocket-Kit 的 POST `/api/pocket-kit/file-manager/upload?root=&path=&name=`，流式上限1GiB且不覆盖同名文件；原系统10GiB上限未沿用。文本预览只支持512KiB内UTF-8。列表最多2000项。
+保留原目录入口、收藏、分享记录；管理 `/config`、`/entries?root=&path=&hidden=`、`/text`、`/favorites`、`/shares`、`/directory`、`/entry`。下载走已认证的 GET `/api/pocket-kit/file-manager/download?root=&path=`，上传为带 X-Pocket-Kit 的 POST `/api/pocket-kit/file-manager/upload?root=&path=&name=`，流式上限1GiB且不覆盖同名文件；原系统10GiB上限未沿用。文本预览只支持512KiB内UTF-8；`.csv` 文件在侧栏预览中使用内置表格展示，复用该文本读取上限。列表最多2000项。
 
 `.local/data/file-manager/` 保存 config、favorites、shares；目录实际文件继续使用原物理位置，不复制整块硬盘或改文件 inode。根 ID 保留，使收藏和分享记录仍能定位。目录更新校验 revision、真实目录存在；路径使用 realpath 限定根范围，外逃符号链接不可读取。删除根目录被拒绝，其他删除需确认。
 
@@ -41,3 +41,9 @@ Node v26.7.0：`npm run verify` 104 项通过，其中新增隔离临时数据�
 - `npm run verify` 构建、检查和133项测试通过；`node features/file-manager/dom-check.mjs` 通过；当时的浏览器检查脚本（现已移除） 通过真实Chromium隔离交互、错误重试、删除取消、320/375/390/430/1100px溢出与44px触控检查，并新增工具栏/首行高度回归。写入动作均只使用虚构数据。
 - 在原GUI授权登录后，已截图并查看桌面1440px与手机移动UA/触屏320、375、390、430px，另查390px暗色；各页宽度等于可滚动宽度，无横向溢出、无pageerror。实页桌面筛选栏69px、手机115px，手机首文件行约位于页面内容顶部325px；目录切换和菜单不再把列表挤到首屏底部。
 - 客户端载体重新加载返回 `applied`，新打开的原GUI已确认新版样式。未改正式业务数据或重启业务Host。截图与凭据不进入代码或发布包；真实手机Safari、软键盘、安全区、系统大字体及媒体播放仍未验收。
+
+## CSV 侧栏预览（2026-11-13）
+
+- `.csv` 文件在现有文件预览区域以内置表格展示，不运行宿主原始预览；支持固定表头、拖拽列宽（72–720px）、逐列文本筛选、列排序及全局搜索。解析支持 UTF-8 BOM、引号包裹字段、字段内逗号/换行和双引号转义；短行补空值。
+- 数据仍经既有安全文本接口读取，限制为512KiB UTF-8；没有新增 API、持久化或宿主补丁。超限、非 UTF-8 文件仍沿用文本接口错误边界。列筛选为包含匹配，排序按中文 locale 数值友好文本序。
+- 验证：`node --test features/file-manager/view.test.js tests/utilities.test.js tests/bundle.test.js`（15项）、`npm run build`、`npm run check` 均通过；本次未执行浏览器/实页验收，移动端实际布局与拖拽手感仍待验证。

@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 const source=await readFile(new URL('./view.js',import.meta.url),'utf8');
+const parseCSV=vm.runInNewContext(source+';parseCSV');
+test('CSV parser handles BOM, quoted commas, escaped quotes and uneven rows',()=>{
+  const parsed=parseCSV('\uFEFF姓名,备注,值\r\n小明,"第一行,补充","a""b"\r\n小红,普通');
+  assert.deepEqual(Array.from(parsed.headers),['姓名','备注','值']);
+  assert.deepEqual(Array.from(parsed.rows[0]),['小明','第一行,补充','a"b']);
+  assert.deepEqual(Array.from(parsed.rows[1]),['小红','普通','']);
+});
 async function fixture(){
   const states=[],effects=[],calls=[],pending=[];let index=0,first=true,confirm=false;
   const h=(type,props,...children)=>({type,props:props||{},children:children.flat(Infinity).filter(c=>c!==null&&c!==undefined&&c!==false)});

@@ -19,3 +19,6 @@ __pycache__/
 *.tgz
 .DS_Store
 *.log
+
+# Local CSV fixtures for manual preview checks.
+/csv-test-*.csv

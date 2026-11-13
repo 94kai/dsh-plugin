@@ -19,11 +19,13 @@ test('built client registers only Pocket Kit and composes all feature entries', 
   const registrations = [], disposals = [], selectedPanels = [];
   plugin.apply({
     effect: callback => { const dispose = callback(); if (dispose) disposals.push(dispose); },
+    documentPreviews: { register: meta => { assert.equal(meta.id,'@local/pocket-kit/csv-preview'); assert.equal(meta.loading,'bytes-complete'); return () => {}; } },
     locale: { register: () => () => {}, bind: () => key => key },
     slots: { inject: (key, callback) => callback(), register: (meta, component) => { registrations.push({ meta, component }); return () => {}; } },
     layout: { panelInfo: { getSnapshot: () => ({ activePanelId: null }) }, selectPanel(id) {selectedPanels.push(id);} },
   });
-  assert.equal(registrations.length, 25);
+  assert.equal(registrations.length, 26);
+  assert.ok(registrations.some(({meta})=>meta.name==='sidebar.right.tab.document' && meta.key==='@local/pocket-kit/csv-preview'));
   const header = registrations.filter(({meta})=>meta.name==='conversation.session.header.utilities');
   assert.equal(header.length,2);
   assert.equal(header[1].meta.id,'pocket-kit.aside-note');

@@ -11,6 +11,7 @@ const entries = [
   ['utilities','client.js'],
   ['terminal-touch-keys','client.js'],
   ['aside-note', 'client.js'],
+  ['csv-preview', 'client.js'],
 ];
 const viewSources = Object.fromEntries(await Promise.all(['music', 'xiaoai'].map(async name => [name, await readFile(new URL(`features/${name}/view.js`, root), 'utf8')])));
 const homeStartup = await readFile(new URL('features/home/startup.js', root), 'utf8');
