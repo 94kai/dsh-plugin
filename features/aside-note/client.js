@@ -18,7 +18,7 @@ window.__ModuleLoader__.load({
     // Normal-state dimensions, colours, glyphs and markup are the upstream UI.
     // Supplemental rules only contain the new maintenance/error states.
     const css = originalCss + `
-.pk-an-scopeChoices input{border-radius:4px}.pk-an-settingsScroll{min-height:0;overflow:auto;flex-shrink:1;overscroll-behavior:contain}.pk-an-tools{margin-top:8px}.pk-an-tools .pk-an-settingBody{gap:8px}.pk-an-toolsActions{display:flex;gap:8px;flex-wrap:wrap}.pk-an-serverMessage{overflow-wrap:anywhere;white-space:pre-wrap}.pk-an-popFoot button{margin-left:8px}.pk-an-popover{max-height:calc(100dvh - 24px)}
+.pk-an-scopeChoices input{border-radius:4px}.pk-an-settingsScroll{min-height:0;overflow:auto;flex-shrink:1;overscroll-behavior:contain}.pk-an-tools{margin-top:8px}.pk-an-tools .pk-an-settingBody{gap:8px}.pk-an-toolsActions{display:flex;gap:8px;flex-wrap:wrap}.pk-an-serverMessage{overflow-wrap:anywhere;white-space:pre-wrap}.pk-an-popFoot button{margin-left:8px}.pk-an-popover{max-height:calc(100dvh - 24px)}.pk-an-globalHeader{position:fixed;z-index:21;top:calc(var(--dsh-frame-chrome-top,0px) + 11px);right:48px;display:flex;align-items:center;pointer-events:none}.pk-an-globalHeader .pk-an-headerBtn{pointer-events:auto;box-sizing:border-box;width:36px;padding-left:8px}
 `;
     const copy = { ...zh, 'popover.storage': '按会话隔离 · 数据保存在服务端', 'popover.shared': '工作区共享 · 数据保存在服务端', 'scope.global': '全局', 'popover.global': '全局共享 · 数据保存在服务端', 'storage.failed': '服务端保存失败，输入已保留，请重试' };
     const say = (key, vars) => String(copy[key] || key).replace(/\{(\w+)\}/g, (match, name) => vars?.[name] == null ? match : String(vars[name]));
@@ -86,10 +86,37 @@ window.__ModuleLoader__.load({
           return () => { clearInterval(timer); window.removeEventListener('focus', refresh); };
         }, [scope.kind, scope.id, interval]);
       }
+      const emptyInputStore = { getSnapshot: () => undefined, subscribe: () => () => {} };
+      function resolveSessionRuntime(sessionId) {
+        if (!sessionId || typeof ctx.get !== 'function') return null;
+        try {
+          const sessions = ctx.get('sessions');
+          const actx = sessions?.scope?.(sessionId);
+          const shell = actx ? ctx.get('conversation')?.input?.for?.(actx) : null;
+          return shell ? { input: shell.state, inputActions: shell.actions } : null;
+        } catch { return null; }
+      }
+      function currentSession(useSessions) {
+        const sessions = (useSessions || noSnapshot)(state => state);
+        return Object.values(sessions?.byId || {}).find(session => (session.retainedBy?.mainView || 0) > 0);
+      }
+      // 空白新会话的标题栏会隐藏工具区，因此只有非空白会话才把入口交给会话标题栏。
+      function GlobalHeader(props) {
+        const activePanelId = (props.usePanelInfo || noSnapshot)(info => info.activePanelId);
+        const session = currentSession(props.useSessions), sessionId = session?.id;
+        const runtime = resolveSessionRuntime(sessionId);
+        const inputStore = runtime?.input || emptyInputStore;
+        const input = React.useSyncExternalStore(
+          listener => inputStore.subscribe(listener),
+          () => inputStore.getSnapshot()
+        );
+        if (activePanelId === null && sessionId && !session.blank) return null;
+        return h('div', { className: 'pk-an-globalHeader' }, h(Header, { sessionId, useWorkspaces: props.useWorkspaces, input, inputActions: runtime?.inputActions }));
+      }
       function Header(props) {
         const current = useView(), preferences = usePreferences();
         const workspaces = (props.useWorkspaces || noSnapshot)(state => state);
-        const input = (props.useInput || noSnapshot)(state => state);
+        const input = Object.prototype.hasOwnProperty.call(props, 'input') ? props.input : (props.useInput || noSnapshot)(state => state);
         const workspace = (workspaces?.items || []).find(value => value.sessionIds?.includes(props.sessionId)) || null;
         React.useEffect(() => {
           const changed = view.binding && (view.binding.sessionId !== props.sessionId || view.binding.workspace?.workspaceId !== workspace?.workspaceId);
@@ -242,7 +269,7 @@ window.__ModuleLoader__.load({
         return h(React.Fragment, null, h('style', null, css), ReactDOM.createPortal(h(Panel, { scope, binding: current.binding, anchorRef: current.anchorRef, onClose: close }), document.body));
       }
       ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({ name: 'conversation.session.header.utilities', id: 'pocket-kit.aside-note', order: 30 }, props => h(Header, props)));
-      ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'pocket-kit.aside-note.overlay', order: 70 }, () => h(React.Fragment, null, h(Overlay), h(toastSeat.ToastHost))));
+      ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'pocket-kit.aside-note.overlay', order: 70 }, props => h(React.Fragment, null, h(GlobalHeader, props), h(Overlay), h(toastSeat.ToastHost))));
       ctx.effect(() => {
         const unload = event => { if (model.hasUnsaved()) { event.preventDefault(); event.returnValue = ''; } };
         window.addEventListener?.('beforeunload', unload);

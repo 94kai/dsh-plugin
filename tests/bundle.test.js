@@ -37,7 +37,8 @@ test('built client registers only Pocket Kit and composes all feature entries', 
   assert.equal(registrations.filter(({meta})=>meta.name==='local.terminal.touch.keys').length,1);
   assert.equal(registrations.filter(({meta})=>meta.name==='main'&&meta.key==='pocket-kit.native-terminal').length,1);
   assert.ok(registrations.some(({ meta }) => meta.name === 'main' && meta.key === 'pocket-kit.home' && meta.children['local.pocket-kit.home.tool']));
-  assert.deepEqual(registrations.filter(({meta})=>meta.name==='sidebar.footer.action').map(({meta})=>meta.id),['pocket-kit-home']);
+  assert.deepEqual(registrations.filter(({meta})=>meta.name==='sidebar.footer.action').map(({meta})=>meta.id),[]);
+  assert.deepEqual(registrations.filter(({meta})=>meta.name==='shell.overlay').map(({meta})=>meta.id).sort(),['network-speed','pocket-kit-home.global','pocket-kit.aside-note.overlay'].sort());
   assert.equal(registrations.filter(({meta})=>meta.name==='sidebar.panellist'&&meta.id==='pocket-kit.native-terminal').length,0);
   assert.ok(registrations.some(({ meta }) => meta.name === 'local.pocket-kit.home.tool' && meta.id === 'network-speed'));
   assert.ok(registrations.some(({ meta }) => meta.name === 'main' && meta.key === 'local.outing-checklist'));

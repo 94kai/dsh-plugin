@@ -12,7 +12,7 @@ async function harness(t, { effects = false } = {}) {
   let source = await readFile(new URL('./client.js', import.meta.url), 'utf8');
   const modelSource = (await readFile(new URL('./client-model.js', import.meta.url), 'utf8')).replace(/^export /gm, '');
   const ui = await readFile(new URL('./original-ui.js', import.meta.url), 'utf8'), css = await readFile(new URL('./original.css', import.meta.url), 'utf8');
-  source = source.replace('/* NOTES_MODEL */', () => modelSource).replace('/* NOTES_ORIGINAL_UI */', () => ui).replace("/* NOTES_ORIGINAL_CSS */ ''", () => JSON.stringify(css)).replace("      ctx.slots.inject('conversation.session.header.utilities'", "      globalThis.notesTest = {model, open, scopeFor, ScopeSwitch, ScopeVisibilitySettings, EmptyState, Panel, Header, HeaderButton, HeaderGlyph, Overlay, TodoRow, PanelHead, ComposerForm, NoteList, SettingsPanel, usePanelGeometry, memoPopoverStyle, forwardToComposer, say, css};\n      ctx.slots.inject('conversation.session.header.utilities'");
+  source = source.replace('/* NOTES_MODEL */', () => modelSource).replace('/* NOTES_ORIGINAL_UI */', () => ui).replace("/* NOTES_ORIGINAL_CSS */ ''", () => JSON.stringify(css)).replace("      ctx.slots.inject('conversation.session.header.utilities'", "      globalThis.notesTest = {model, open, scopeFor, ScopeSwitch, ScopeVisibilitySettings, EmptyState, Panel, Header, GlobalHeader, HeaderButton, HeaderGlyph, Overlay, TodoRow, PanelHead, ComposerForm, NoteList, SettingsPanel, usePanelGeometry, memoPopoverStyle, forwardToComposer, say, css};\n      ctx.slots.inject('conversation.session.header.utilities'");
   const stores = new Map(), pendingEffects = [], cleanups = [], calls = [], eventListeners = new Map(), timers = new Map();
   let current, cursor, plugin, record = base(), timerId = 0;
   const listeners = name => { if (!eventListeners.has(name)) eventListeners.set(name, new Set()); return eventListeners.get(name); };
@@ -74,6 +74,8 @@ test('header uses original document glyph and count badge: zero hidden, one visi
   const glyph = app.render(app.HeaderGlyph, {});
   assert.match(glyph.props.dangerouslySetInnerHTML.__html, /M3\.25 2\.75h6\.5l3 3v7\.5/);
   assert.match(glyph.props.dangerouslySetInnerHTML.__html, /width="16" height="16"/);
+  assert.match(app.css, /\.pk-an-globalHeader\{[^}]*top:calc\(var\(--dsh-frame-chrome-top,0px\) \+ 11px\)/);
+  assert.match(app.css, /\.pk-an-globalHeader \.pk-an-headerBtn\{[^}]*width:36px;padding-left:8px/);
 });
 test('settings omit about details but retain shortcut, prefix and data maintenance', async t => {
   const app = await harness(t); let opened = false;
@@ -126,6 +128,19 @@ test('upstream row icons and forwarded checkmark retain safe public composer ins
   assert.equal(inserted[0].value, '\n- 测试文本'); assert.deepEqual(JSON.parse(JSON.stringify(inserted[0].span)), { start: 4, end: 4, draftRev: 7 });
   list = app.panel(binding).children.find(node => node?.type === app.NoteList); component = list.props.row(list.props.openItems[0]); row = app.render(component.type, component.props);
   assert.ok(cls(row, 'pk-an-forwardMark')); assert.equal(app.calls[0].action, 'forward');
+});
+test('global header fallback keeps aside note visible without a session title bar', async t => {
+  const app = await harness(t), props = { useWorkspaces: select => select({ items: [] }) };
+  const hidden = app.render(app.GlobalHeader, { ...props, usePanelInfo: select => select({ activePanelId: null }), useSessions: select => select({ byId: { s: { id: 's', blank: false, retainedBy: { mainView: 1 } } } }) });
+  assert.equal(hidden, null);
+  const blankSession = app.render(app.GlobalHeader, { ...props, usePanelInfo: select => select({ activePanelId: null }), useSessions: select => select({ byId: { s: { id: 's', blank: true, retainedBy: { mainView: 1 } } } }) });
+  assert.equal(blankSession.props.className, 'pk-an-globalHeader');
+  const visible = app.render(app.GlobalHeader, { ...props, usePanelInfo: select => select({ activePanelId: 'pocket-kit.home' }), useSessions: select => select({ byId: { s: { id: 's', retainedBy: { mainView: 1 } } } }) });
+  assert.equal(visible.props.className, 'pk-an-globalHeader');
+  const header = app.render(visible.children[0].type, visible.children[0].props);
+  assert.equal(nodes(header).some(node => node.type === app.HeaderButton), true);
+  const withoutSession = app.render(app.GlobalHeader, { ...props, usePanelInfo: select => select({ activePanelId: null }), useSessions: select => select({ byId: {} }) });
+  assert.equal(withoutSession.props.className, 'pk-an-globalHeader');
 });
 test('global switch is shared across bindings, visible without a workspace and usable without a session', async t => {
   const app = await harness(t), changes = [];
