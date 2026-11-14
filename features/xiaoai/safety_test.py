@@ -70,51 +70,55 @@ class SafetyTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 server.create_file_url(str(link))
 
-    def test_queue_shuffle_preserves_current_timer_and_all_pending_entries(self):
+    def test_play_mode_validates_and_keeps_source_for_looping(self):
         from types import SimpleNamespace
-        from unittest.mock import Mock
-        # Evaluate only the Runtime class, never the worker's startup/import side effects.
         tree = ast.parse((ROOT / 'worker_bridge.py').read_text(encoding='utf-8'))
         runtime = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'Runtime')
-        current, timer = object(), object()
-        songs = [object() for _ in range(120)]
-        pending = songs + [songs[0]]  # Repeated songs remain repeated.
-        app = SimpleNamespace(local_music_lock=asyncio.Lock(), current_song=current, play_queue=pending[:], timer_task=timer)
-        def reverse(queue):
-            self.assertTrue(app.local_music_lock.locked())
-            queue.reverse()
-        shuffle = Mock(side_effect=reverse)
-        scope = {'App': app, 'random': SimpleNamespace(shuffle=shuffle)}
+        current = object()
+        app = SimpleNamespace(local_music_lock=asyncio.Lock(), play_source=[], current_song=current, play_queue=[], play_mode='sequence')
+        scope = {'App': app, 'random': SimpleNamespace(shuffle=lambda queue: queue.reverse())}
         exec(compile(ast.Module(body=[runtime], type_ignores=[]), '<fixture-runtime>', 'exec'), scope)
-        asyncio.run(scope['Runtime'].shuffle_queue())
-        self.assertEqual(app.play_queue, list(reversed(pending)))
-        self.assertIs(app.current_song, current)
-        self.assertIs(app.timer_task, timer)
-        shuffle.assert_called_once_with(app.play_queue)
-        for queue in [[], [songs[0]]]:
-            app.play_queue = queue[:]
-            asyncio.run(scope['Runtime'].shuffle_queue())
-            self.assertEqual(app.play_queue, queue)
+        asyncio.run(scope['Runtime'].set_play_mode('loop-all'))
+        self.assertEqual(app.play_mode, 'loop-all')
+        self.assertEqual(app.play_source, [current])
+        asyncio.run(scope['Runtime'].set_play_mode('shuffle'))
+        self.assertEqual(app.play_mode, 'shuffle')
+        with self.assertRaises(ValueError):
+            asyncio.run(scope['Runtime'].set_play_mode('repeat-all'))
 
-    def test_queue_shuffle_route_runs_authenticated_runtime_method(self):
+    def test_playlist_route_passes_mode_and_ordered_source(self):
         from types import SimpleNamespace
         from unittest.mock import Mock
         tree = ast.parse((ROOT / 'worker_bridge.py').read_text(encoding='utf-8'))
         handler = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == 'ApiHandler')
         method = next(node for node in handler.body if isinstance(node, ast.FunctionDef) and node.name == 'do_POST')
-        operation = object()
-        shuffle = Mock(return_value=operation)
+        play = Mock(return_value='operation')
         run = Mock()
-        scope = {'Runtime': SimpleNamespace(shuffle_queue=shuffle), 'run_async': run}
+        scope = {'Runtime': SimpleNamespace(play_playlist=play), 'run_async': run}
         exec(compile(ast.Module(body=[method], type_ignores=[]), '<fixture-handler>', 'exec'), scope)
-        fake = SimpleNamespace(path='/queue/shuffle', authorized=lambda: True, read_json=lambda: {}, send_json=Mock())
+        payload = {'mode': 'loop-all', 'source': ['/music/a.mp3', '/music/b.mp3'], 'paths': ['/music/b.mp3']}
+        fake = SimpleNamespace(path='/queue/playlist', authorized=lambda: True, read_json=lambda: payload, send_json=Mock())
         scope['do_POST'](fake)
-        shuffle.assert_called_once_with()
-        run.assert_called_once_with(operation)
+        play.assert_called_once_with('loop-all', ['/music/a.mp3', '/music/b.mp3'], ['/music/b.mp3'])
+        run.assert_called_once_with('operation')
         fake.send_json.assert_called_once_with(200, {'success': True})
-        fake.authorized = lambda: False
-        scope['do_POST'](fake)
-        self.assertEqual(shuffle.call_count, 1)
+
+    def test_worker_playback_logger_is_defined_before_routes(self):
+        tree = ast.parse((ROOT / 'worker_bridge.py').read_text(encoding='utf-8'))
+        imports_logging = any(
+            isinstance(node, ast.Import) and any(alias.name == 'logging' for alias in node.names)
+            for node in tree.body
+        )
+        logger_defined = any(
+            isinstance(node, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == 'logger' for target in node.targets)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Attribute)
+            and node.value.func.attr == 'getLogger'
+            for node in tree.body
+        )
+        self.assertTrue(imports_logging)
+        self.assertTrue(logger_defined)
 
     def test_worker_control_auth_is_required_for_get_and_post(self):
         tree = ast.parse((ROOT / 'worker_bridge.py').read_text(encoding='utf-8'))

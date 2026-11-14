@@ -22,7 +22,59 @@ window.__ModuleLoader__.load({
 .pk-media .pk-xiaoai-status-body{flex:1;min-width:0}
 .pk-media .pk-xiaoai-dismiss{flex:none;width:44px;height:44px;min-width:44px;padding:0;border-radius:999px;border-color:transparent;background:transparent;color:var(--dsw-alias-label-secondary);font-size:20px;line-height:1;display:grid;place-items:center}
 .pk-media .pk-xiaoai-status.is-active .pk-note{padding:6px 0}
-.pk-media .pk-xiaoai-status.is-active .pk-error{margin:6px 0 0}
+.pk-media .pk-now{display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,var(--dsw-alias-bg-base));border:1px solid color-mix(in srgb,var(--dsw-alias-brand-primary) 20%,transparent)}
+.pk-media .pk-now-art{flex:none;width:52px;height:52px;border-radius:12px;display:grid;place-items:center;font-size:22px;background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent);color:var(--dsw-alias-brand-primary)}
+.pk-media .pk-now-text{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+.pk-media .pk-now-title{min-width:0}
+.pk-media .pk-now-title-text{font-size:16px;font-weight:650;line-height:1.35}
+.pk-media .pk-now-sub{font-size:12px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-media .pk-track-list{display:flex;flex-direction:column;margin-top:4px}
+.pk-media .pk-track{display:flex;align-items:center;gap:8px;min-height:52px;padding:2px 0;border-top:1px solid var(--dsw-alias-border-l2);min-width:0}
+.pk-media .pk-track:first-child{border-top:0}
+.pk-media .pk-track-index{flex:none;width:30px;text-align:center;font-size:12px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary)}
+.pk-media .pk-track.is-current .pk-track-index{color:var(--dsw-alias-brand-primary);font-size:13px}
+.pk-media .pk-track-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.pk-media .pk-title-wrap{display:block;min-width:0;overflow:hidden}
+.pk-media .pk-title-wrap>span{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+.pk-media .pk-title-wrap.is-marquee>span{max-width:none;text-overflow:clip;animation:pk-marquee 3s linear infinite alternate}
+@keyframes pk-marquee{from{transform:translateX(0)}to{transform:translateX(var(--pk-shift,0))}}
+@media(prefers-reduced-motion:reduce){.pk-media .pk-title-wrap.is-marquee>span{animation:none;max-width:100%;text-overflow:ellipsis;transform:none}}
+.pk-media .pk-track-title{font-size:14px;font-weight:600;line-height:1.35}
+.pk-media .pk-track.is-current .pk-track-title{color:var(--dsw-alias-brand-primary)}
+.pk-media .pk-track-sub{font-size:12px;line-height:1.35;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-media .pk-track-actions{flex:none;display:flex;align-items:center}
+.pk-media .pk-icon-btn{width:40px;height:44px;min-width:40px;min-height:44px;padding:0;border:0;border-radius:999px;background:transparent;color:color-mix(in srgb,var(--dsw-alias-label-primary) 62%,transparent);font-size:15px;line-height:1;display:grid;place-items:center}
+.pk-media .pk-icon-btn:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
+.pk-media .pk-icon-btn.is-on{color:var(--dsw-alias-brand-primary)}
+.pk-media .pk-icon-btn.is-danger:hover{color:var(--dsw-alias-state-error-primary)}
+.pk-media .pk-list-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.pk-media .pk-list-head h2{margin:0}
+.pk-media .pk-list-head .pk-actions{margin:0}
+.pk-media .pk-modes button{font-size:13px;padding:6px 12px}
+.pk-media .pk-auto-rules{margin-top:10px}
+.pk-media .pk-auto-rule{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);margin-top:8px;min-width:0}
+.pk-media .pk-auto-rule-main{flex:1;min-width:0}
+.pk-media .pk-auto-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pk-media .pk-auto-title strong{overflow-wrap:anywhere}
+.pk-media .pk-badge{flex:none;padding:2px 8px;border-radius:999px;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);font-size:11px}
+.pk-media .pk-badge.is-on{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent);color:var(--dsw-alias-brand-primary)}
+.pk-media .pk-auto-actions{flex:none;display:flex;align-items:center;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.pk-media .pk-auto-actions>button{min-height:40px;padding:6px 10px;font-size:13px}
+.pk-media .pk-auto-songs{margin-top:8px}
+.pk-media .pk-auto-song{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--dsw-alias-border-l2);min-width:0}
+.pk-media .pk-auto-song:first-child{border-top:0}
+.pk-media .pk-auto-index{flex:none;width:24px;text-align:center;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.pk-media .pk-auto-song-name{flex:1;min-width:0;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pk-media .pk-auto-song>button{flex:none;min-height:40px;padding:6px 10px;font-size:13px}
+.pk-media .pk-auto-form h3{margin:0 0 8px}
+@media(max-width:640px){.pk-media .pk-auto-rule{flex-direction:column;align-items:stretch}.pk-media .pk-auto-actions{justify-content:flex-end}}
+
+.pk-media .pk-search{display:flex;gap:8px;align-items:flex-end}
+.pk-media .pk-search>label{flex:1 1 0;min-width:0}
+.pk-media .pk-search>label>input{width:100%}
+.pk-media .pk-search>button{flex:none;width:auto;min-width:76px;min-height:44px;padding:0 16px;margin:0}
+.pk-media .pk-search-result-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+@media(max-width:640px){.pk-media .pk-track-actions .pk-icon-btn{width:38px;height:44px;min-width:38px;font-size:14px}.pk-media .pk-now-art{width:46px;height:46px;border-radius:10px;font-size:20px}.pk-media .pk-tabs{display:flex;flex-wrap:nowrap;gap:6px;overflow:visible}.pk-media .pk-tabs>*{flex:1 1 0;min-width:0}.pk-media .pk-tabs button{width:auto;min-width:0;font-size:13px;padding:6px 2px;white-space:nowrap}.pk-media .pk-modes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.pk-media .pk-modes button{width:100%;font-size:12px;padding:6px 2px;white-space:nowrap;min-height:44px}}
 `;
     function useApi(feature) {
       const active = React.useRef(true), controllers = React.useRef(new Set());

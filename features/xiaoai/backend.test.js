@@ -159,20 +159,40 @@ test('playlists persist without retaining retired local favorite data', async t 
   await loaded.dispose();
 });
 
-test('queue shuffle forwards only to owned worker and never persists playlist changes', async t => {
-  const { music, directory } = await fixture(t, { library: { playlists: { 'speaker-a': [{ path: '/fixture/music/a.mp3' }, { path: '/fixture/music/b.mp3' }] }, announcements: {} } });
-  const file = join(directory, 'xiaoai-music/library.json');
-  const before = await readFile(file, 'utf8');
-  await assert.rejects(request(music, `${base}/queue/shuffle`, 'POST', {}), { status: 503 });
+test('playlist play forwards ordered source and mode to the owned worker', async t => {
+  const { music } = await fixture(t, { library: { playlists: { 'speaker-a': [{ path: '/fixture/music/a.mp3' }, { path: '/fixture/music/b.mp3' }] }, announcements: {} } });
+  await assert.rejects(request(music, `${base}/playlist/play`, 'POST', {}), { status: 503 });
   const calls = [];
   music.worker = async (...args) => { calls.push(args); return { success: true }; };
-  const { status, result } = await request(music, `${base}/queue/shuffle`, 'POST', { paths: ['/ignored.mp3'] });
+  const { status, result } = await request(music, `${base}/playlist/play`, 'POST', { path: '/fixture/music/b.mp3', mode: 'loop-all' });
   assert.equal(status, 200); assert.deepEqual(result, { success: true });
   assert.equal(calls[0][0].id, 'speaker-a');
-  assert.equal(calls[0][1], '/queue/shuffle');
-  assert.deepEqual(calls[0][2], { method: 'POST', body: '{}' });
-  assert.equal(await readFile(file, 'utf8'), before);
-  assert.equal((await request(music, `${base}/queue/shuffle`)).status, 405);
+  assert.equal(calls[0][1], '/queue/playlist');
+  assert.deepEqual(JSON.parse(calls[0][2].body), { mode: 'loop-all', source: ['/fixture/music/a.mp3', '/fixture/music/b.mp3'], paths: ['/fixture/music/b.mp3'] });
+  // Unknown modes fall back to sequence instead of reaching the worker verbatim.
+  await request(music, `${base}/playlist/play`, 'POST', { mode: 'repeat-all' });
+  assert.equal(JSON.parse(calls[1][2].body).mode, 'sequence');
+  await request(music, `${base}/playlist/mode`, 'POST', { mode: 'shuffle' });
+  assert.equal(calls[2][1], '/queue/mode');
+  assert.deepEqual(JSON.parse(calls[2][2].body), { mode: 'shuffle' });
+});
+
+test('search play clears the playlist and keeps the chosen song and later results', async t => {
+  const { music } = await fixture(t, { library: { playlists: { 'speaker-a': [{ path: '/fixture/music/old.mp3' }] }, announcements: {} } });
+  const calls = [];
+  music.worker = async (profile, name, options) => {
+    calls.push([name, options]);
+    if (name.startsWith('/search?')) return { items: [
+      { path: '/fixture/music/a.mp3', name: 'a.mp3', title: 'A' },
+      { path: '/fixture/music/b.mp3', name: 'b.mp3', title: 'B' },
+      { path: '/fixture/music/c.mp3', name: 'c.mp3', title: 'C' }] };
+    return { success: true };
+  };
+  const { status } = await request(music, `${base}/search/play`, 'POST', { keyword: 'fixture', path: '/fixture/music/b.mp3', mode: 'loop-one' });
+  assert.equal(status, 200);
+  assert.deepEqual(music.playlist(music.profile('speaker-a')).map(song => song.path), ['/fixture/music/b.mp3', '/fixture/music/c.mp3']);
+  const play = calls.find(([name]) => name === '/queue/playlist');
+  assert.deepEqual(JSON.parse(play[1].body), { mode: 'loop-one', source: ['/fixture/music/b.mp3', '/fixture/music/c.mp3'], paths: ['/fixture/music/b.mp3'] });
 });
 
 test('invalid replacement playlist does not clear existing items', async t => {

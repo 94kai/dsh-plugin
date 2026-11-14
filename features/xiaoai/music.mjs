@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { readPrivateJson, savePrivateJson, privateBindHost, httpError } from './storage.mjs';
 import path from 'node:path';
 
+const PLAY_MODES = new Set(['sequence', 'loop-all', 'loop-one', 'shuffle']);
+
 
 function json(res, status, body) {
   const payload = JSON.stringify(body);
@@ -123,6 +125,25 @@ export class XiaoAiMusicModule {
   playlist(profile) {
     if (!Array.isArray(this.library.playlists[profile.id])) this.library.playlists[profile.id] = [];
     return this.library.playlists[profile.id];
+  }
+
+  playMode(value) {
+    const mode = String(value || 'sequence');
+    return PLAY_MODES.has(mode) ? mode : 'sequence';
+  }
+
+  async playList(profile, songs, startPath, mode) {
+    const source = songs.map(song => song.path);
+    if (!source.length) throw httpError('播放列表为空', 400);
+    let start = 0;
+    if (startPath) {
+      start = source.indexOf(String(startPath));
+      if (start < 0) throw httpError('歌曲已不在当前列表，请刷新后重试', 409);
+    }
+    return this.worker(profile, '/queue/playlist', {
+      method: 'POST', timeout: 30000,
+      body: JSON.stringify({ mode: this.playMode(mode), source, paths: [source[start]] })
+    });
   }
 
   announcements(profile) {
@@ -243,7 +264,10 @@ export class XiaoAiMusicModule {
     if (!owned || owned.stopping || !owned.token) throw httpError('音箱 worker 已暂停，请先显式启动；不会连接旧服务', 503);
     const response = await fetch(`http://127.0.0.1:${profile.api_port}${pathname}`, { ...options, signal: AbortSignal.timeout(options.timeout || 120000), headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${owned.token}` } });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw Object.assign(new Error(`音箱服务请求失败（${response.status}），请检查连接与参数`), { status: 502 });
+    if (!response.ok) {
+      const detail = typeof data.error === 'string' && data.error ? `：${data.error.slice(0, 200)}` : '';
+      throw Object.assign(new Error(`音箱服务请求失败（${response.status}）${detail}`), { status: 502 });
+    }
     return data;
   }
 
@@ -328,24 +352,42 @@ export class XiaoAiMusicModule {
       json(res,200,await this.fnos.setFavorite(song,payload.favorite,req.signal));return true;
     }
     if (action === 'collection/play' && req.method === 'POST') {
-      const payload = await body(req); const source = payload.source === 'favorites' ? (await this.fnosFavorites(profile,req.signal)).songs : this.playlist(profile);
-      const start = payload.path ? source.findIndex(song=>song.path===payload.path) : Math.max(0, Math.min(source.length - 1, Number(payload.index) || 0));
-      if(start<0)throw httpError('列表已变化，请刷新后重新选择',409);
-      if (!source.length) throw Object.assign(new Error('列表为空'), { status: 400 });
-      const ordered = source.slice(start);
-      const repeat = Math.max(1, Math.min(20, Number(payload.repeat) || 1));
-      const result = await this.worker(profile, '/queue/play', { method: 'POST', body: JSON.stringify({ paths: ordered.map(song => song.path), repeat }) });
-      json(res, 200, result); return true;
-    }
-    if (action === 'queue/shuffle' && req.method === 'POST') {
-      await body(req);
-      const result = await this.worker(profile, '/queue/shuffle', { method: 'POST', body: '{}' });
-      json(res, 200, result); return true;
-    }
-    if (action === 'queue/jump' && req.method === 'POST') {
+      // 兼容旧客户端：按来源列表从指定位置开始顺序播放。
       const payload = await body(req);
-      const result = await this.worker(profile, '/queue/jump', { method: 'POST', body: JSON.stringify({ index: Number(payload.index) }) });
-      json(res, 200, result); return true;
+      const source = payload.source === 'favorites' ? (await this.fnosFavorites(profile, req.signal)).songs : this.playlist(profile);
+      json(res, 200, await this.playList(profile, source, payload.path, 'sequence')); return true;
+    }
+    if (action === 'playlist/play' && req.method === 'POST') {
+      const payload = await body(req);
+      json(res, 200, await this.playList(profile, this.playlist(profile), payload.path, payload.mode)); return true;
+    }
+    if (action === 'playlist/mode' && req.method === 'POST') {
+      const payload = await body(req);
+      const mode = this.playMode(payload.mode);
+      json(res, 200, await this.worker(profile, '/queue/mode', { method: 'POST', body: JSON.stringify({ mode }) })); return true;
+    }
+    if (action === 'search/play' && req.method === 'POST') {
+      const payload = await body(req);
+      const keyword = String(payload.keyword || '').trim().slice(0, 100);
+      if (!keyword) throw httpError('请输入搜索关键词', 400);
+      const found = await this.worker(profile, `/search?q=${encodeURIComponent(keyword)}`);
+      const items = Array.isArray(found.items) ? found.items : [];
+      if (!items.length) throw httpError('没有找到可播放的歌曲', 404);
+      const start = payload.path ? items.findIndex(song => song.path === payload.path) : 0;
+      if (start < 0) throw httpError('搜索结果已变化，请重新搜索', 409);
+      // 点播时先清空播放列表，再加入该曲及其在搜索结果中后面的歌曲。
+      const target = []; this.addSongs(target, items.slice(start), profile);
+      this.library.playlists[profile.id] = target; await this.saveLibrary();
+      json(res, 200, await this.playList(profile, target, target[0]?.path, payload.mode)); return true;
+    }
+    if (action === 'favorites/play' && req.method === 'POST') {
+      const payload = await body(req);
+      const favorites = await this.fnosFavorites(profile, req.signal);
+      const start = payload.path ? favorites.songs.findIndex(song => song.path === payload.path) : 0;
+      if (start < 0) throw httpError('喜欢列表已变化，请刷新后重试', 409);
+      const target = []; this.addSongs(target, favorites.songs.slice(start), profile);
+      this.library.playlists[profile.id] = target; await this.saveLibrary();
+      json(res, 200, await this.playList(profile, target, target[0]?.path, payload.mode)); return true;
     }
     if (action === 'announcements' && req.method === 'DELETE') {
       this.announcements(profile).splice(0);

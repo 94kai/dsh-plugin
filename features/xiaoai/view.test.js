@@ -4,12 +4,31 @@ import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 
 const source = await readFile(new URL('./view.js', import.meta.url), 'utf8');
+const mediaStyles = await readFile(new URL('../media/client.js', import.meta.url), 'utf8');
 // Define functions only. No React hooks, DOM, browser, network or speaker actions run.
 const { createXiaoaiReadGate, xiaoaiReadbackAfterCommit } = vm.runInNewContext(`${source}\n({ createXiaoaiReadGate, xiaoaiReadbackAfterCommit });`, {});
 
-test('queue shuffle button uses live queue action and disables for unavailable or short queues', () => {
-  assert.match(source, /button\('打乱列表', \(\) => musicAction\('queue\/shuffle', \{\}, '待播列表已打乱，当前歌曲不变'\), unavailable \|\| \(profile\?\.queueSize \|\| 0\) < 2\)/);
-  assert.match(source, /打乱只调整全部待播歌曲的顺序，当前歌曲继续播放/);
+test('single playlist exposes playback modes and removes the run queue controls', () => {
+  assert.match(source, /\[\['sequence', '顺序播放'\], \['loop-all', '列表循环'\], \['loop-one', '单曲循环'\], \['shuffle', '随机播放'\]\]/);
+  assert.match(source, /点某首从该曲开始；列表循环会回到第一首/);
+  assert.match(source, /h\('h2', null, '播放列表'\)/);
+  assert.match(source, /className: `pk-track\$\{current \? ' is-current' : ''\}`/);
+  assert.match(source, /playAndRefresh\('search\/play', \{ keyword: searchedKeyword, path: song\.path, mode: playMode \}/);
+  assert.match(source, /playAndRefresh\('favorites\/play', \{ path: song\.path, mode: playMode \}/);
+  assert.doesNotMatch(source, /queue\/shuffle|queue\/jump|打乱列表|本次播放队列/);
+});
+
+
+test('volume applies on slider release without a separate apply button', () => {
+  assert.match(source, /onPointerUp: commit, onKeyUp: commitKey/);
+  assert.match(source, /onCommit\(value\)/);
+  assert.doesNotMatch(source, /应用音量/);
+});
+
+test('hide stop control when idle and use three-second marquee', () => {
+  assert.match(source, /currentTitle \? h\('div', \{ className: 'pk-actions' \},\s*button\('停止播放'/);
+  assert.match(mediaStyles, /animation:pk-marquee 3s linear infinite alternate/);
+  assert.doesNotMatch(mediaStyles, /animation:pk-marquee 9s/);
 });
 
 test('retired announcement merge and UI are absent', () => {
@@ -68,4 +87,10 @@ test('UI gates owned collections and disables drafts while actions run', () => {
   assert.match(source, /setControlDraft\(null\); await readback/);
   assert.match(source, /setConfigDraft\(null\); await readback/);
   assert.match(source, /请仅刷新状态，不要重复操作/);
+});
+
+test('automation rule form defines its selected playlist before rendering', () => {
+  const defined = source.indexOf('const ruleList = lists.find');
+  const rendered = source.indexOf('const ruleForm = ruleOpen');
+  assert.ok(defined > 0 && rendered > defined, 'ruleList must be declared before ruleForm is built');
 });

@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import random
 import shutil
 import shlex
 import subprocess
@@ -127,6 +128,10 @@ class App:
     local_music_lock = asyncio.Lock()
     play_queue: list[SongItem] = []
     current_song: SongItem | None = None
+    # 单一播放列表模式：play_source 保存完整有序列表，play_queue 只保存待播部分；
+    # 播过的歌曲不删除，由 play_mode 决定下一首（顺序/列表循环/单曲循环/随机）。
+    play_mode: str = "sequence"
+    play_source: list[SongItem] = []
     timer_task: asyncio.Task | None = None
     index_refresh_task: asyncio.Task | None = None
     index_refresh_lock = asyncio.Lock()
@@ -579,6 +584,8 @@ class App:
         await cls._cancel_timer_unlocked()
         cls.play_queue.clear()
         cls.current_song = None
+        cls.play_source.clear()
+        cls.play_mode = "sequence"
         if stop_device:
             await stop_playback()
         return queued_count
@@ -626,14 +633,25 @@ class App:
         async with cls.local_music_lock:
             cls.timer_task = None
             if not cls.play_queue:
-                cls.current_song = None
-                return
+                if cls.current_song is not None and cls.play_mode == "loop-one":
+                    await cls._start_song_unlocked(cls.current_song, trigger="单曲循环")
+                    return
+                if cls.play_source and cls.play_mode in ("loop-all", "shuffle"):
+                    refill = list(cls.play_source)
+                    if cls.play_mode == "shuffle":
+                        random.shuffle(refill)
+                    cls.play_queue = refill
+                    logger.info("播放模式=%s，重新载入%d首", cls.play_mode, len(refill))
+                if not cls.play_queue:
+                    cls.current_song = None
+                    return
             next_song = cls.play_queue.pop(0)
             logger.info(
-                "自动切歌: 第%d首 %s，剩余队列=%d",
+                "自动切歌: 第%d首 %s，剩余队列=%d，模式=%s",
                 next_song.index,
                 next_song.name,
                 len(cls.play_queue),
+                cls.play_mode,
             )
             await cls._start_song_unlocked(next_song, trigger="自动切歌")
 

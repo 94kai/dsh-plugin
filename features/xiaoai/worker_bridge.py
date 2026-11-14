@@ -2,6 +2,7 @@
 import argparse
 import hmac
 import asyncio
+import logging
 import json
 import os
 import random
@@ -40,6 +41,8 @@ from main import App, on_event_callback  # noqa: E402
 from automation_runtime import Automation
 from player_control import set_volume  # noqa: E402
 from stop_commands import RULES as STOP_COMMAND_RULES
+
+logger = logging.getLogger(__name__)
 
 
 class Runtime:
@@ -90,6 +93,7 @@ class Runtime:
             "refreshing": App.index_refresh_lock.locked(),
             "currentSong": current.name if current else None,
             "queueSize": len(App.play_queue),
+            "playMode": App.play_mode,
             "queue": queue,
             "wsPort": PROFILE["ws_port"],
             "httpPort": PROFILE["music"]["http"]["port"],
@@ -137,8 +141,11 @@ class Runtime:
             first_song = App.play_queue.pop(0)
             await App._start_song_unlocked(first_song, trigger="网页播放")
 
+    PLAY_MODES = ("sequence", "loop-all", "loop-one", "shuffle")
+
     @classmethod
     async def play_paths(cls, paths, repeat=1):
+        """Legacy repeat-based playback used by scheduled playlists and voice."""
         clean_paths = list(dict.fromkeys(str(item) for item in paths if str(item)))[:500]
         if not clean_paths:
             raise ValueError("播放列表不能为空")
@@ -160,24 +167,59 @@ class Runtime:
             await App._start_song_unlocked(first_song, trigger="网页播放列表")
 
     @classmethod
-    async def shuffle_queue(cls):
-        # Keep the current song and its timer untouched; shuffle the entire pending queue.
+    async def play_playlist(cls, mode, source, paths=None):
+        """Single playlist playback: ordered source plus a playback mode."""
+        source_paths = list(dict.fromkeys(str(item) for item in (source or []) if str(item)))[:1000]
+        if not source_paths:
+            raise ValueError("播放列表不能为空")
+        with App.searcher._lock:
+            allowed = {song.path for song in App.searcher._songs}
+        if any(item not in allowed for item in source_paths):
+            raise ValueError("播放列表包含不在当前曲库中的歌曲")
+        songs = await asyncio.to_thread(App._build_song_items, source_paths, App.music_server)
+        if not songs:
+            raise ValueError("播放列表中没有可播放的歌曲")
+        mode = str(mode) if str(mode) in cls.PLAY_MODES else "sequence"
+        start = 0
+        if paths:
+            first = str(paths[0])
+            start = next((index for index, song in enumerate(songs) if song.path == first), -1)
+            if start < 0:
+                raise ValueError("歌曲不在播放列表中")
+        if mode == "shuffle":
+            order = list(songs)
+            random.shuffle(order)
+        else:
+            order = songs[start:]
+        # Stop the device before starting a new song: some players reject or hang
+        # when player_play_url is issued while another track is still active.
+        await App.clear_queue(stop_device=True)
         async with App.local_music_lock:
-            random.shuffle(App.play_queue)
+            App.play_source = songs
+            App.play_mode = mode
+            App.play_queue = order
+            first_song = App.play_queue.pop(0)
+            logger.info(
+                "开始播放列表: 模式=%s 共%d首 起始位置=%d 待播=%d",
+                mode,
+                len(songs),
+                start,
+                len(App.play_queue),
+            )
+            await App._start_song_unlocked(first_song, trigger="网页播放列表")
 
     @classmethod
-    async def jump_queue(cls, index):
-        position = int(index)
+    async def set_play_mode(cls, mode):
+        mode = str(mode)
+        if mode not in cls.PLAY_MODES:
+            raise ValueError("播放模式无效")
         async with App.local_music_lock:
-            queue = ([App.current_song] if App.current_song else []) + list(App.play_queue)
-            if position < 0 or position >= len(queue):
-                raise ValueError("待播歌曲位置无效")
-            if position == 0 and App.current_song:
-                return
-            target = queue[position]
-            await App._cancel_timer_unlocked()
-            App.play_queue = queue[position + 1:]
-            await App._start_song_unlocked(target, trigger="网页队列切歌")
+            if not App.play_source:
+                App.play_source = ([App.current_song] if App.current_song else []) + list(App.play_queue)
+            App.play_mode = mode
+            if mode == "shuffle" and App.play_queue:
+                random.shuffle(App.play_queue)
+        return {"success": True, "playMode": mode}
 
 
 def run_async(coro, timeout=120):
@@ -231,10 +273,10 @@ class ApiHandler(BaseHTTPRequestHandler):
                 run_async(Runtime.play_path(str(body.get("path", "")), body.get("repeat", 1)))
             elif self.path == "/queue/play":
                 run_async(Runtime.play_paths(body.get("paths", []), body.get("repeat", 1)))
-            elif self.path == "/queue/shuffle":
-                run_async(Runtime.shuffle_queue())
-            elif self.path == "/queue/jump":
-                run_async(Runtime.jump_queue(body.get("index", -1)))
+            elif self.path == "/queue/playlist":
+                run_async(Runtime.play_playlist(body.get("mode", "sequence"), body.get("source", []), body.get("paths")))
+            elif self.path == "/queue/mode":
+                return self.send_json(200, run_async(Runtime.set_play_mode(body.get("mode", ""))))
             elif self.path == "/play-search":
                 run_async(App.play_local_music_by_keyword(str(body.get("keyword", "")).strip()))
             elif self.path == "/random":
