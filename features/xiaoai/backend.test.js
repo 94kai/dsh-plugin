@@ -212,13 +212,43 @@ test('automation validates revision and retains rules without starting schedule'
   assert.equal((await stat(join(directory, 'xiaoai-music/automation.json'))).mode & 0o777, 0o600);
 });
 
+test('silent commands validate and persist without affecting speech or legacy defaults', async t => {
+  const { assistant, music } = await fixture(t);
+  const calls = [];
+  music.worker = async (profile, route, options) => { calls.push({ route, body: JSON.parse(options.body) }); return { success: true }; };
+  const prefix = '/api/modules/xiaoai-assistant';
+  const send = body => request(assistant, prefix + '/send', 'POST', { profileId: 'speaker-a', mode: 'ask', text: '关灯', ...body });
+  await send({});
+  assert.deepEqual(calls.at(-1), { route: '/ask', body: { text: '关灯', silent: false } });
+  await send({ silent: true });
+  assert.deepEqual(calls.at(-1), { route: '/ask', body: { text: '关灯', silent: true } });
+  assert.equal(assistant.state.history['speaker-a'].length, 2);
+  await send({ silent: true });
+  assert.equal(assistant.state.history['speaker-a'].length, 2);
+  await send({ mode: 'speak', silent: true });
+  assert.deepEqual(calls.at(-1), { route: '/speak', body: { text: '关灯' } });
+  assert.equal(assistant.state.history['speaker-a'][0].silent, false);
+  const before = calls.length;
+  for (const silent of ['false', 0, null]) {
+    await assert.rejects(send({ silent }), /静默参数必须是布尔值/);
+    assert.throws(() => assistant.normalizeControl({ name: 'fixture', command: '关灯', mode: 'action', silent }), /静默参数必须是布尔值/);
+  }
+  assert.equal(calls.length, before);
+  const created = await request(assistant, prefix + '/controls', 'POST', { name: 'fixture', mode: 'pair', onCommand: '开灯', offCommand: '关灯', silent: true });
+  const reloaded = new XiaoAiAssistantModule({ dataDir: assistant.dataDir.replace(/\/xiaoai-assistant$/, ''), xiaoAiMusic: music });
+  await reloaded.initialize();
+  assert.equal(reloaded.state.controls[0].silent, true);
+  await request(reloaded, prefix + '/execute', 'POST', { profileId: 'speaker-a', controlId: created.result.control.id, operation: 'off' });
+  assert.deepEqual(calls.at(-1), { route: '/ask', body: { text: '关灯', silent: true } });
+});
+
 test('assistant preserves quick controls and per-device five-item history using mocked commands', async t => {
   const { assistant, music, directory } = await fixture(t);
   const calls = []; music.assistantCommand = async (...args) => { calls.push(args); return { success: true }; };
   const created = await request(assistant, '/api/modules/xiaoai-assistant/controls', 'POST', { name: 'Fixture lamp', category: 'light', mode: 'pair', onCommand: '开灯', offCommand: '关灯' });
   assert.equal(created.status, 201);
   await request(assistant, '/api/modules/xiaoai-assistant/execute', 'POST', { profileId: 'speaker-a', controlId: created.result.control.id, operation: 'off' });
-  assert.deepEqual(calls.at(-1), ['speaker-a', 'ask', '关灯']);
+  assert.deepEqual(calls.at(-1), ['speaker-a', 'ask', '关灯', false]);
   for (let i = 0; i < 6; i++) await request(assistant, '/api/modules/xiaoai-assistant/send', 'POST', { profileId: 'speaker-a', mode: 'speak', text: `Fixture ${i}` });
   assert.equal(assistant.state.history['speaker-a'].length, 5);
   assert.equal((await stat(join(directory, 'xiaoai-assistant/state.json'))).mode & 0o777, 0o600);

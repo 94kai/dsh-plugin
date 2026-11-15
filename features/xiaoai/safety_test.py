@@ -34,6 +34,12 @@ class SafetyTests(unittest.TestCase):
             self.assertEqual(args[:4], ['ubus', 'call', 'mibrain', 'ai_service'])
             self.assertEqual(len(args), 5)
             self.assertEqual(json.loads(args[-1])['nlp_text'], text)
+            self.assertEqual(json.loads(args[-1])['tts'], 1)
+            asyncio.run(player_control.ask_xiaoai(text, silent=True))
+            payload = json.loads(shlex.split(commands[-1])[-1])
+            self.assertEqual(payload, {'tts': 0, 'nlp': 1, 'nlp_text': text})
+            with self.assertRaises(ValueError):
+                asyncio.run(player_control.ask_xiaoai(text, silent='false'))
             url = "http://127.0.0.1:18080/file/fixture'quote.mp3"
             asyncio.run(player_control.play_music_url(url))
             args = shlex.split(commands[-1])

@@ -309,7 +309,10 @@ class ApiHandler(BaseHTTPRequestHandler):
                     raise ValueError("小爱指令不能超过 200 个字符")
                 if any(ord(char) < 32 and char not in "\n\r\t" for char in text):
                     raise ValueError("小爱指令包含不支持的控制字符")
-                run_async(App._ask_xiaoai(text), 30)
+                silent = body.get("silent", False)
+                if type(silent) is not bool:
+                    raise ValueError("静默参数必须是布尔值")
+                run_async(App._ask_xiaoai(text, silent=silent), 30)
             else:
                 return self.send_json(404, {"error": "接口不存在"})
             self.send_json(200, {"success": True})

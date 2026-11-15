@@ -6,6 +6,13 @@
 
 2026-11-09 起，经用户要求，**已确认局域网风险且未设置 `XIAOAI_AUTO_START=false` 时，Host 初始化自动启动全部配置音箱的自有 worker**，无需打开页面；未确认风险仍保持暂停。启动沿用可信私网绑定、端口冲突检查和卸载清理，不接管旧 Allinone。已有启用的定时/语音规则随 worker 生效，不恢复旧临时队列。手动停止在本次 Host 生命周期内保持暂停，重载后重新自动连接；特殊情况运行 Allinone 前先停用小爱 Host。以下 2026-11-07 默认暂停描述是历史记录，以本段为准。
 
+## 2026-11-15 静默执行小爱指令
+
+- 音响控制发送区（仅 ask）和快捷控制编辑区新增“静默执行”；默认关闭，旧控制/旧历史缺少字段时保持语音回应。直接朗读不受影响，不改音量和播放逻辑。
+- `POST /send` 增加可选布尔 `silent`；快捷控制创建/更新持久化同名字段，`/execute` 使用已保存值。非布尔输入拒绝；speak 忽略合法静默值。历史保存 silent 并按文字、模式、静默值去重，填入编辑/再次发送恢复原值。
+- Node → worker `/ask` → `App._ask_xiaoai` → `ask_xiaoai` 透传布尔参数，最终 `ubus call mibrain ai_service` 使用 `tts:0`（静默）或 `tts:1`（默认），始终 `nlp:1`。无需新增小米登录或 MiService 依赖；不修改现有私人快捷项。
+- 验证：`npm run verify` 构建、检查及全部 216 项测试通过（包含 Python 纯模拟安全回归），`git diff --check` 通过。覆盖默认/静默负载、非法类型拒绝、快捷项持久化、历史去重、重发取原值、朗读不受影响及 shell 引号。未控制真实音箱；实际是否不回复取决于固件，发送成功不等于静默真机验收。未做浏览器/手机布局验收，也未重载运行中的 Host/worker。
+
 ## 2026-11-14 定时播放界面重排
 
 - 去掉“先歌单后规则”的绕行说明和底部折叠表单：规则页顶部直接“新增规则/收起编辑”，编辑表单紧邻按钮；“歌单管理”用当前歌单下拉 + 单行搜索，歌曲用紧凑行（序号、歌名、移除图标）。
@@ -147,7 +154,7 @@ await music.dispose();
 | 方法与后缀 | 输入/响应 |
 | --- | --- |
 | GET `/state` | `{profiles,controls,history}` |
-| POST `/send` | `{profileId,mode:'speak'|'ask',text}`；`{success:true,history}` |
+| POST `/send` | `{profileId,mode:'speak'|'ask',text,silent?:boolean}`；`{success:true,history}` |
 | POST `/execute` | `{profileId,controlId,operation:'on'|'off'|'action'}`；`{success:true}` |
 | POST `/volume` | `{profileId,volume}`；`{success:true,volume}` |
 | POST `/controls` | 控制字段；201 `{control}` |
@@ -155,7 +162,7 @@ await music.dispose();
 | DELETE `/controls/:id` | `{controls}` |
 | DELETE `/history/:profileId` | `{history:[]}` |
 
-控制字段 `{id,name,category,mode,onLabel,offLabel,onCommand,offCommand,command}`。history为按profileId分组的 `{text,mode,usedAt}[]`。
+控制字段 `{id,name,category,mode,onLabel,offLabel,onCommand,offCommand,command,silent}`（silent 可选布尔，默认 false）。history为按profileId分组的 `{text,mode,silent,usedAt}[]`，旧记录无 silent 时视为 false。
 
 ## worker、端口与生命周期
 

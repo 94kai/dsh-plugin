@@ -8,6 +8,14 @@ const mediaStyles = await readFile(new URL('../media/client.js', import.meta.url
 // Define functions only. No React hooks, DOM, browser, network or speaker actions run.
 const { createXiaoaiReadGate, xiaoaiReadbackAfterCommit } = vm.runInNewContext(`${source}\n({ createXiaoaiReadGate, xiaoaiReadbackAfterCommit });`, {});
 
+test('silent UI covers quick controls and replays the saved flag explicitly', () => {
+  assert.match(source, /mode === 'ask' && check\('静默执行/);
+  assert.match(source, /controlDraft\.silent, value => updateControl\('silent', value\)/);
+  assert.match(source, /silent: sendMode === 'ask' && sendSilent === true/);
+  assert.match(source, /sendText\(item.text, item.mode, false, item.silent === true\)/);
+  assert.match(source, /setSilent\(item.silent === true\)/);
+});
+
 test('single playlist exposes playback modes and removes the run queue controls', () => {
   assert.match(source, /\[\['sequence', '顺序播放'\], \['loop-all', '列表循环'\], \['loop-one', '单曲循环'\], \['shuffle', '随机播放'\]\]/);
   assert.match(source, /点某首从该曲开始；列表循环会回到第一首/);

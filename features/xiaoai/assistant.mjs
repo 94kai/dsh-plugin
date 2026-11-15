@@ -12,6 +12,10 @@ function json(res, status, value) {
 }
 
 function httpError(message, status = 400) { return Object.assign(new Error(message), { status }); }
+function silentValue(value = false) {
+  if (typeof value !== 'boolean') throw httpError('静默参数必须是布尔值');
+  return value;
+}
 
 async function readBody(req) {
   const chunks = []; let size = 0;
@@ -43,7 +47,7 @@ export class XiaoAiAssistantModule {
     const mode = input.mode === 'action' ? 'action' : 'pair';
     const command = value => String(value || '').trim().slice(0, 200);
     const control = {
-      id: String(id), name, category, mode,
+      id: String(id), name, category, mode, silent: silentValue(input.silent),
       onLabel: String(input.onLabel || '开启').trim().slice(0, 10), offLabel: String(input.offLabel || '关闭').trim().slice(0, 10),
       onCommand: command(input.onCommand), offCommand: command(input.offCommand), command: command(input.command)
     };
@@ -70,18 +74,20 @@ export class XiaoAiAssistantModule {
     if (url.pathname === `${apiPrefix}/send` && req.method === 'POST') {
       const input = await readBody(req); const mode = input.mode === 'speak' ? 'speak' : 'ask';
       const text = String(input.text || '').trim();
-      await this.xiaoAiMusic.assistantCommand(String(input.profileId || ''), mode, text);
+      const requestedSilent = silentValue(input.silent);
+      const silent = mode === 'ask' && requestedSilent;
+      await this.xiaoAiMusic.assistantCommand(String(input.profileId || ''), mode, text, silent);
       const history = this.history(String(input.profileId || ''));
-      const duplicate = history.findIndex(item => item.text === text && item.mode === mode);
+      const duplicate = history.findIndex(item => item.text === text && item.mode === mode && (item.silent === true) === silent);
       if (duplicate >= 0) history.splice(duplicate, 1);
-      history.unshift({ text, mode, usedAt: new Date().toISOString() }); history.splice(5);
+      history.unshift({ text, mode, silent, usedAt: new Date().toISOString() }); history.splice(5);
       await this.save(); json(res, 200, { success: true, history }); return true;
     }
     if (url.pathname === `${apiPrefix}/execute` && req.method === 'POST') {
       const input = await readBody(req); const control = this.state.controls.find(item => item.id === input.controlId);
       if (!control) throw httpError('快捷控制不存在', 404);
       const command = control.mode === 'action' ? control.command : input.operation === 'off' ? control.offCommand : control.onCommand;
-      await this.xiaoAiMusic.assistantCommand(String(input.profileId || ''), 'ask', command);
+      await this.xiaoAiMusic.assistantCommand(String(input.profileId || ''), 'ask', command, control.silent);
       json(res, 200, { success: true }); return true;
     }
     if (url.pathname === `${apiPrefix}/volume` && req.method === 'POST') {

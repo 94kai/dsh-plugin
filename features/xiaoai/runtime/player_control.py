@@ -41,8 +41,10 @@ exit "$aio_tts_code"
     return await run_shell(script)
 
 
-async def ask_xiaoai(text: str):
-    payload = {"tts": 1, "nlp": 1, "nlp_text": text}
+async def ask_xiaoai(text: str, silent: bool = False):
+    if type(silent) is not bool:
+        raise ValueError("静默参数必须是布尔值")
+    payload = {"tts": 0 if silent else 1, "nlp": 1, "nlp_text": text}
     encoded = _escape_shell_single_quote(json.dumps(payload, ensure_ascii=False))
     script = f"ubus call mibrain ai_service '{encoded}'"
     return await run_shell(script)

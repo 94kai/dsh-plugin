@@ -427,9 +427,9 @@ class App:
         return await speak_text(text)
 
     @classmethod
-    async def _ask_xiaoai(cls, text: str):
+    async def _ask_xiaoai(cls, text: str, silent: bool = False):
         cls.disarm_reply_interrupt("即将发送问答请求")
-        return await ask_xiaoai(text)
+        return await ask_xiaoai(text, silent=silent)
 
     @classmethod
     async def _play_music_url(cls, url: str):

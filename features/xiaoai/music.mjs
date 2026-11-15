@@ -280,13 +280,14 @@ export class XiaoAiMusicModule {
     }));
   }
 
-  async assistantCommand(profileId, mode, text) {
+  async assistantCommand(profileId, mode, text, silent = false) {
+    if (typeof silent !== 'boolean') throw Object.assign(new Error('静默参数必须是布尔值'), { status: 400 });
     const profile = this.profile(profileId);
     if (!profile) throw Object.assign(new Error('音箱不存在'), { status: 404 });
     const value = String(text || '').trim();
     const maxLength = mode === 'speak' ? 500 : 200;
     if (!value || value.length > maxLength) throw Object.assign(new Error(`内容长度必须为 1–${maxLength} 个字符`), { status: 400 });
-    return this.worker(profile, mode === 'speak' ? '/speak' : '/ask', { method: 'POST', body: JSON.stringify({ text: value }), timeout: 30000 });
+    return this.worker(profile, mode === 'speak' ? '/speak' : '/ask', { method: 'POST', body: JSON.stringify({ text: value, ...(mode === 'speak' ? {} : { silent }) }), timeout: 30000 });
   }
 
   async assistantVolume(profileId, volume) {
